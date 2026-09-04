@@ -188,3 +188,8 @@ idea {
         downloadJavadoc = true
     }
 }
+
+tasks.matching { it.name == 'runServer' }.configureEach {
+    standardInput = System.in
+}
+

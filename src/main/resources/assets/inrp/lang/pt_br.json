@@ -1,0 +1,33 @@
+{
+  "inrp.prefix": "[In-RP] ",
+  "inrp.chat.suffix": "[RP]",
+  "inrp.nametag.suffix": "[em RP]",
+
+  "inrp.status.turned_on": "Você entrou no modo Roleplay (In-RP).",
+  "inrp.status.turned_off": "Você saiu do modo Roleplay (Off-RP).",
+  "inrp.status.already_on": "Você já está no modo Roleplay.",
+  "inrp.status.already_off": "Você já está fora do modo Roleplay.",
+  "inrp.status.current_on": "Seu status atual é: In-RP.",
+  "inrp.status.current_off": "Seu status atual é: Off-RP.",
+
+  "inrp.roll.result.simple": "%s rolou %s (1-%s)",
+  "inrp.roll.result.dice": "%s rolou %s %s (%sd%s)",
+  "inrp.roll.error.invalid_format": "Formato de dado inválido! Use /roll <número> ou /roll <quantidade>d<lados> (ex: /roll 20, /roll 2d6).",
+  "inrp.roll.error.number_bounds": "A quantidade de dados e lados deve ser positiva e dentro dos limites (máximo 100 dados, máximo 10000 lados).",
+
+  "inrp.admin.set.success": "Modo RP alterado para %s para %s jogador(es).",
+  "inrp.admin.config.pvp": "PvP em Roleplay agora está %s.",
+  "inrp.admin.config.pvp.already": "PvP em Roleplay já está %s.",
+  "inrp.admin.config.block_break": "Quebra de blocos em Roleplay agora está %s.",
+  "inrp.admin.config.block_break.already": "Quebra de blocos em Roleplay já está %s.",
+  "inrp.admin.config.block_place": "Colocação de blocos em Roleplay agora está %s.",
+  "inrp.admin.config.block_place.already": "Colocação de blocos em Roleplay já está %s.",
+  "inrp.admin.config.op_bypass": "Bypass de restrições para operadores agora está %s.",
+  "inrp.admin.config.op_bypass.already": "Bypass de restrições para operadores já está %s.",
+  "inrp.admin.status_on": "ATIVADO",
+  "inrp.admin.status_off": "DESATIVADO",
+
+  "inrp.rule.pvp_disabled": "PvP está desativado para jogadores em modo Roleplay.",
+  "inrp.rule.block_break_disabled": "Quebrar blocos está desativado no modo Roleplay.",
+  "inrp.rule.block_place_disabled": "Colocar blocos está desativado no modo Roleplay."
+}

@@ -1,0 +1,33 @@
+{
+  "inrp.prefix": "[In-RP] ",
+  "inrp.chat.suffix": "[RP]",
+  "inrp.nametag.suffix": "[in RP]",
+  
+  "inrp.status.turned_on": "You have entered Roleplay mode (In-RP).",
+  "inrp.status.turned_off": "You have exited Roleplay mode (Off-RP).",
+  "inrp.status.already_on": "You are already in Roleplay mode.",
+  "inrp.status.already_off": "You are already in Off-RP mode.",
+  "inrp.status.current_on": "Your current status is: In-RP.",
+  "inrp.status.current_off": "Your current status is: Off-RP.",
+
+  "inrp.roll.result.simple": "%s rolled %s (1-%s)",
+  "inrp.roll.result.dice": "%s rolled %s %s (%sd%s)",
+  "inrp.roll.error.invalid_format": "Invalid roll format! Use /roll <number> or /roll <count>d<sides> (e.g. /roll 20, /roll 2d6).",
+  "inrp.roll.error.number_bounds": "The number of dice and sides must be positive and within reasonable limits (max 100 dice, max 10000 sides).",
+
+  "inrp.admin.set.success": "Set RP mode to %s for %s player(s).",
+  "inrp.admin.config.pvp": "Roleplay PvP is now %s.",
+  "inrp.admin.config.pvp.already": "Roleplay PvP is already %s.",
+  "inrp.admin.config.block_break": "Roleplay block breaking is now %s.",
+  "inrp.admin.config.block_break.already": "Roleplay block breaking is already %s.",
+  "inrp.admin.config.block_place": "Roleplay block placing is now %s.",
+  "inrp.admin.config.block_place.already": "Roleplay block placing is already %s.",
+  "inrp.admin.config.op_bypass": "Operator restriction bypass is now %s.",
+  "inrp.admin.config.op_bypass.already": "Operator restriction bypass is already %s.",
+  "inrp.admin.status_on": "ON",
+  "inrp.admin.status_off": "OFF",
+
+  "inrp.rule.pvp_disabled": "PvP is disabled for players in Roleplay mode.",
+  "inrp.rule.block_break_disabled": "Block breaking is disabled in Roleplay mode.",
+  "inrp.rule.block_place_disabled": "Block placing is disabled in Roleplay mode."
+}
