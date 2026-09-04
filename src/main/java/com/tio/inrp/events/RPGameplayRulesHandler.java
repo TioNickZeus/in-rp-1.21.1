@@ -25,15 +25,17 @@ public class RPGameplayRulesHandler {
                     return;
                 }
 
-                boolean attackerInRP = InRPAttachments.isInRP(serverAttacker);
-                boolean targetInRP = event.getTarget() instanceof Player targetPlayer && InRPAttachments.isInRP(targetPlayer);
+                if (event.getTarget() instanceof Player targetPlayer) {
+                    boolean attackerInRP = InRPAttachments.isInRP(serverAttacker);
+                    boolean targetInRP = InRPAttachments.isInRP(targetPlayer);
 
-                if (attackerInRP || targetInRP) {
-                    event.setCanceled(true);
-                    serverAttacker.displayClientMessage(
-                            LocalizationHelper.getPrefixedMessage("inrp.rule.pvp_disabled").withStyle(ChatFormatting.RED),
-                            true
-                    );
+                    if (attackerInRP || targetInRP) {
+                        event.setCanceled(true);
+                        serverAttacker.displayClientMessage(
+                                LocalizationHelper.getPrefixedMessage("inrp.rule.pvp_disabled").withStyle(ChatFormatting.RED),
+                                true
+                        );
+                    }
                 }
             }
         }
