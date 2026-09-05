@@ -23,6 +23,11 @@ A lightweight, server-friendly **Roleplay (RP) Switch & Utility Mod** for **Mine
     - **Block Place Protection**: Prevent players from placing blocks in RP.
     - **Operator Bypass**: Allow staff/OPs to bypass restrictions even when rules are active.
   - Built-in validation: Avoids redundant disk writes if a setting is already set.
+- **Player Lives & Death Tracking (`/lives`)**:
+  - Automatically tracks player deaths persistently.
+  - Staff can assign max lives per player (or server-wide default).
+  - When lives run out, the player is either placed into **Spectator mode** with a `[DEAD]` tag on Tab, or **kicked/banned** until revived by an admin.
+  - Admins can revive both online and offline players (`/rpadmin lives revive <player>`).
 - **Internationalization (i18n)**:
   - Supports client-side language switching (`Component.translatableWithFallback`).
   - Bundled with **English (`en_us`)** and **Brazilian Portuguese (`pt_br`)**.
@@ -40,9 +45,12 @@ A lightweight, server-friendly **Roleplay (RP) Switch & Utility Mod** for **Mine
 | `/rp on` | Everyone | Enters Roleplay mode (activates nametag & chat tags). |
 | `/rp off` | Everyone | Exits Roleplay mode. |
 | `/rp toggle` | Everyone | Toggles between In-RP and Off-RP. |
+| `/rp help` | Everyone | Shows a list of all player commands. |
 | `/roll` | Everyone | Rolls a default 20-sided die (1-20). |
 | `/roll <sides>` | Everyone | Rolls a die with a specified number of sides (e.g. `/roll 100`). |
 | `/roll <dice>` | Everyone | Rolls dice using RPG notation (e.g. `/roll 2d6`, `/roll 3d20`). |
+| `/lives` | Everyone | Checks your own death count, max lives, and remaining lives. |
+| `/lives <player>` | Everyone | Checks another player's lives and death stats. |
 
 ### Staff Commands (OP Level 2+)
 
@@ -53,6 +61,13 @@ A lightweight, server-friendly **Roleplay (RP) Switch & Utility Mod** for **Mine
 | `/rpadmin config block_break <true\|false>` | OP (Level 2) | Enables or disables block breaking for players in RP mode. |
 | `/rpadmin config block_place <true\|false>` | OP (Level 2) | Enables or disables block placing for players in RP mode. |
 | `/rpadmin config op_bypass <true\|false>` | OP (Level 2) | Allows or prevents operators (OP level 2+) from bypassing RP restrictions. |
+| `/rpadmin lives set <targets> <amount>` | OP (Level 2) | Sets maximum lives for players (-1 for unlimited). |
+| `/rpadmin lives revive <targets>` | OP (Level 2) | Revives dead players (works for both online and offline players). |
+| `/rpadmin lives setdeaths <targets> <amount>` | OP (Level 2) | Manually sets death count for players. |
+| `/rpadmin lives action <spectator\|kick>` | OP (Level 2) | Sets elimination action when lives run out (spectator or kick). |
+| `/rpadmin lives applydefault [targets]` | OP (Level 2) | Applies current default max lives to all online (or specified) players. |
+| `/rpadmin confirm` | OP (Level 2) | Confirms a pending bulk action (required when affecting 5+ players). |
+| `/rpadmin help` | OP (Level 2) | Shows a list of all admin commands. |
 
 ---
 
@@ -92,6 +107,16 @@ The server configuration file is generated automatically at `config/inrp-server.
     # Radius in blocks to broadcast /roll results. Set to -1.0 for global broadcast.
     # Range: -1.0 ~ 1000.0
     rollProximityRadius = 30.0
+
+[lives]
+    # Action taken when a player loses all lives ('spectator' or 'kick')
+    livesAction = "spectator"
+
+    # Default max lives for players (-1 for unlimited/disabled)
+    defaultMaxLives = -1
+
+    # If true, only deaths while in RP mode count toward the lives system
+    countDeathsOnlyInRP = false
 ```
 
 ---
@@ -100,11 +125,11 @@ The server configuration file is generated automatically at `config/inrp-server.
 
 ### Dedicated Server
 1. Ensure your server is running **NeoForge 1.21.1** (NeoForge 21.1.249 or newer).
-2. Place the compiled `inrp-1.0.0.jar` into the server's `mods/` directory.
+2. Place the compiled `inrp-1.0.3.jar` into the server's `mods/` directory.
 3. Start the server. Players with pure **Vanilla Minecraft 1.21.1** clients can connect immediately!
 
 ### Singleplayer / Client
-1. Place the `inrp-1.0.0.jar` in your `.minecraft/mods/` directory.
+1. Place the `inrp-1.0.3.jar` in your `.minecraft/mods/` directory.
 2. Launch Minecraft using the NeoForge 1.21.1 profile.
 
 ---
@@ -133,6 +158,12 @@ cd in-rp-1.21.1
 ```
 
 The resulting JAR file will be located in `build/libs/`.
+
+---
+
+## 📐 Architecture
+
+For detailed technical documentation, design decisions, data flows, and extension guidelines, see [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ---
 

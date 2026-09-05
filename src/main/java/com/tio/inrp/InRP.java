@@ -1,12 +1,14 @@
 package com.tio.inrp;
 
 import com.mojang.logging.LogUtils;
+import com.tio.inrp.commands.LivesCommand;
 import com.tio.inrp.commands.RPAdminCommand;
 import com.tio.inrp.commands.RPCommand;
 import com.tio.inrp.commands.RollCommand;
 import com.tio.inrp.config.InRPConfig;
 import com.tio.inrp.data.InRPAttachments;
 import com.tio.inrp.events.ChatEventHandler;
+import com.tio.inrp.events.LivesEventHandler;
 import com.tio.inrp.events.RPGameplayRulesHandler;
 import com.tio.inrp.events.ScoreboardHandler;
 import com.tio.inrp.util.LocalizationHelper;
@@ -42,6 +44,7 @@ public class InRP {
         NeoForge.EVENT_BUS.register(ScoreboardHandler.class);
         NeoForge.EVENT_BUS.register(ChatEventHandler.class);
         NeoForge.EVENT_BUS.register(RPGameplayRulesHandler.class);
+        NeoForge.EVENT_BUS.register(LivesEventHandler.class);
         NeoForge.EVENT_BUS.register(this);
     }
 
@@ -56,12 +59,14 @@ public class InRP {
         RPCommand.register(event.getDispatcher());
         RollCommand.register(event.getDispatcher());
         RPAdminCommand.register(event.getDispatcher());
-        LOGGER.info("Registered In-RP commands: /rp, /roll, /rpadmin");
+        LivesCommand.register(event.getDispatcher());
+        LOGGER.info("Registered In-RP commands: /rp, /roll, /rpadmin, /lives");
     }
 
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event) {
         LOGGER.info("In-RP mod active on server.");
         LocalizationHelper.reloadTranslations();
+        com.tio.inrp.data.InRPLivesManager.init(event.getServer());
     }
 }

@@ -1,5 +1,6 @@
 package com.tio.inrp.config;
 
+import java.util.List;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 public class InRPConfig {
@@ -14,6 +15,9 @@ public class InRPConfig {
     public static final ModConfigSpec.DoubleValue ROLL_PROXIMITY_RADIUS;
     public static final ModConfigSpec.ConfigValue<String> CHAT_SUFFIX;
     public static final ModConfigSpec.ConfigValue<String> NAMETAG_SUFFIX;
+    public static final ModConfigSpec.ConfigValue<String> LIVES_ACTION;
+    public static final ModConfigSpec.IntValue DEFAULT_MAX_LIVES;
+    public static final ModConfigSpec.BooleanValue COUNT_DEATHS_ONLY_IN_RP;
 
     static {
         BUILDER.push("general");
@@ -61,6 +65,22 @@ public class InRPConfig {
         ROLL_PROXIMITY_RADIUS = BUILDER
                 .comment("Radius in blocks to hear /roll results. Set to -1.0 for global broadcast.")
                 .defineInRange("rollProximityRadius", 30.0, -1.0, 1000.0);
+
+        BUILDER.pop();
+
+        BUILDER.push("lives");
+
+        LIVES_ACTION = BUILDER
+                .comment("Action taken when a player loses all lives ('spectator' or 'kick')")
+                .defineInList("livesAction", "spectator", List.of("spectator", "kick"));
+
+        DEFAULT_MAX_LIVES = BUILDER
+                .comment("Default max lives for players (-1 for unlimited/disabled)")
+                .defineInRange("defaultMaxLives", -1, -1, 100000);
+
+        COUNT_DEATHS_ONLY_IN_RP = BUILDER
+                .comment("If true, only deaths while in RP mode count toward the lives system")
+                .define("countDeathsOnlyInRP", false);
 
         BUILDER.pop();
     }

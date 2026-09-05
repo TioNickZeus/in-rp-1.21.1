@@ -29,5 +29,58 @@
 
   "inrp.rule.pvp_disabled": "PvP está desativado para jogadores em modo Roleplay.",
   "inrp.rule.block_break_disabled": "Quebrar blocos está desativado no modo Roleplay.",
-  "inrp.rule.block_place_disabled": "Colocar blocos está desativado no modo Roleplay."
+  "inrp.rule.block_place_disabled": "Colocar blocos está desativado no modo Roleplay.",
+
+  "inrp.lives.tab.dead": "[MORTO]",
+  "inrp.lives.unlimited": "Ilimitado",
+  "inrp.lives.status_alive": "Vivo",
+  "inrp.lives.status_dead": "Morto",
+  "inrp.lives.header": "=== Vidas & Mortes de %s ===",
+  "inrp.lives.info_deaths": "Mortes: %s",
+  "inrp.lives.info_max": "Vidas Máximas: %s",
+  "inrp.lives.info_remaining": "Vidas Restantes: %s",
+  "inrp.lives.info_status": "Status: %s",
+  "inrp.lives.eliminated.broadcast": "%s esgotou todas as suas vidas e está permanentemente morto!",
+  "inrp.lives.spectator_message": "Suas vidas acabaram! Você está no modo Espectador até que um administrador reviva você.",
+  "inrp.lives.kick_message": "Suas vidas acabaram! Você foi eliminado do RP.\nAguarde um administrador reviver seu personagem.",
+  "inrp.lives.revived_notification": "Você foi revivido por um administrador! Bem-vindo de volta.",
+
+  "inrp.admin.lives.set.success": "Limite de vidas definido para %s para %s jogador(es).",
+  "inrp.admin.lives.revive.success": "%s jogador(es) revivido(s) com sucesso.",
+  "inrp.admin.lives.setdeaths.success": "Contador de mortes definido para %s para %s jogador(es).",
+  "inrp.admin.lives.action.success": "Ação de eliminação de vidas definida para %s.",
+  "inrp.admin.lives.action.already": "Ação de eliminação de vidas já está definida como %s.",
+  "inrp.admin.lives.applydefault.success": "Limite de vidas padrão (%s) aplicado a %s jogador(es).",
+  "inrp.admin.lives.applydefault.disabled": "O limite de vidas padrão está desativado (-1). Configure um valor primeiro.",
+
+  "inrp.roll.no_one_heard": "(ninguém mais ouviu seu dado)",
+
+  "inrp.admin.confirm.pending": "Esta ação afetará: %s. Clique para confirmar ou use /rpadmin confirm em 10 segundos.",
+  "inrp.admin.confirm.success": "Ação confirmada e executada.",
+  "inrp.admin.confirm.expired": "Nenhuma ação pendente ou ela expirou.",
+  "inrp.admin.confirm.click": "[CONFIRMAR]",
+  "inrp.admin.confirm.desc.setmode": "Alterar modo RP de %s jogador(es) para %s",
+  "inrp.admin.confirm.desc.setlives": "Definir vidas máximas de %s jogador(es) para %s",
+  "inrp.admin.confirm.desc.setdeaths": "Definir mortes de %s jogador(es) para %s",
+  "inrp.admin.confirm.desc.applydefault": "Aplicar vidas padrão a %s jogador(es) (máx: %s)",
+
+  "inrp.error.players_only": "Apenas jogadores podem executar este comando.",
+
+  "inrp.help.header": "=== Ajuda In-RP ===",
+  "inrp.help.rp": "/rp - Verificar seu status de RP atual",
+  "inrp.help.rp_on": "/rp on - Entrar no modo Roleplay",
+  "inrp.help.rp_off": "/rp off - Sair do modo Roleplay",
+  "inrp.help.rp_toggle": "/rp toggle - Alternar modo Roleplay",
+  "inrp.help.roll": "/roll [dado] - Rolar dados (ex: /roll 20, /roll 2d6)",
+  "inrp.help.lives": "/lives [jogador] - Ver informações de vidas e mortes",
+
+  "inrp.admin.help.header": "=== Ajuda Admin In-RP ===",
+  "inrp.admin.help.set": "/rpadmin set <alvos> <on|off> - Definir modo RP para jogadores",
+  "inrp.admin.help.config": "/rpadmin config <opção> <valor> - Alterar configuração do servidor",
+  "inrp.admin.help.lives_set": "/rpadmin lives set <alvos> <quantidade> - Definir vidas máximas",
+  "inrp.admin.help.lives_revive": "/rpadmin lives revive <alvos> - Reviver jogadores",
+  "inrp.admin.help.lives_setdeaths": "/rpadmin lives setdeaths <alvos> <quantidade> - Definir mortes",
+  "inrp.admin.help.lives_action": "/rpadmin lives action <spectator|kick> - Definir ação de eliminação",
+  "inrp.admin.help.lives_applydefault": "/rpadmin lives applydefault [alvos] - Aplicar vidas padrão",
+  "inrp.admin.help.confirm": "/rpadmin confirm - Confirmar uma ação em massa pendente"
 }

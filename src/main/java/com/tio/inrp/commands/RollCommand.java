@@ -119,10 +119,19 @@ public class RollCommand {
         }
 
         double radiusSq = radius * radius;
+        int recipientCount = 0;
         for (ServerPlayer nearbyPlayer : player.serverLevel().players()) {
             if (nearbyPlayer.distanceToSqr(player) <= radiusSq) {
                 nearbyPlayer.sendSystemMessage(message);
+                recipientCount++;
             }
+        }
+
+        if (recipientCount <= 1) {
+            player.sendSystemMessage(
+                    LocalizationHelper.getMessage("inrp.roll.no_one_heard")
+                            .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC)
+            );
         }
     }
 }

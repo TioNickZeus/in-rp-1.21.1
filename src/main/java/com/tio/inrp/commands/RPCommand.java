@@ -7,7 +7,10 @@ import com.tio.inrp.util.LocalizationHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 
 public class RPCommand {
 
@@ -20,6 +23,8 @@ public class RPCommand {
                         .executes(context -> setStatus(context.getSource(), false)))
                 .then(Commands.literal("toggle")
                         .executes(context -> toggleStatus(context.getSource())))
+                .then(Commands.literal("help")
+                        .executes(context -> showHelp(context.getSource())))
         );
     }
 
@@ -31,7 +36,7 @@ public class RPCommand {
             source.sendSuccess(() -> LocalizationHelper.getPrefixedMessage(key).withStyle(color), false);
             return 1;
         }
-        source.sendFailure(LocalizationHelper.getMessage("Only players can execute this command."));
+        source.sendFailure(LocalizationHelper.getMessage("inrp.error.players_only"));
         return 0;
     }
 
@@ -55,12 +60,38 @@ public class RPCommand {
             InRPAttachments.setInRP(player, enable);
             ScoreboardHandler.updatePlayerScoreboard(player);
 
+            // Feature #15: Sound feedback
+            if (enable) {
+                player.playNotifySound(SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.5F, 1.0F);
+            } else {
+                player.playNotifySound(SoundEvents.ANVIL_USE, SoundSource.PLAYERS, 0.3F, 1.0F);
+            }
+
             String key = enable ? "inrp.status.turned_on" : "inrp.status.turned_off";
             ChatFormatting color = enable ? ChatFormatting.GREEN : ChatFormatting.AQUA;
             source.sendSuccess(() -> LocalizationHelper.getPrefixedMessage(key).withStyle(color), false);
             return 1;
         }
-        source.sendFailure(LocalizationHelper.getMessage("Only players can execute this command."));
+        source.sendFailure(LocalizationHelper.getMessage("inrp.error.players_only"));
         return 0;
+    }
+
+    private static int showHelp(CommandSourceStack source) {
+        Component help = Component.empty()
+                .append(LocalizationHelper.getPrefixedMessage("inrp.help.header").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
+                .append(Component.literal("\n"))
+                .append(LocalizationHelper.getMessage("inrp.help.rp").withStyle(ChatFormatting.YELLOW))
+                .append(Component.literal("\n"))
+                .append(LocalizationHelper.getMessage("inrp.help.rp_on").withStyle(ChatFormatting.GRAY))
+                .append(Component.literal("\n"))
+                .append(LocalizationHelper.getMessage("inrp.help.rp_off").withStyle(ChatFormatting.GRAY))
+                .append(Component.literal("\n"))
+                .append(LocalizationHelper.getMessage("inrp.help.rp_toggle").withStyle(ChatFormatting.GRAY))
+                .append(Component.literal("\n"))
+                .append(LocalizationHelper.getMessage("inrp.help.roll").withStyle(ChatFormatting.YELLOW))
+                .append(Component.literal("\n"))
+                .append(LocalizationHelper.getMessage("inrp.help.lives").withStyle(ChatFormatting.YELLOW));
+        source.sendSuccess(() -> help, false);
+        return 1;
     }
 }

@@ -29,5 +29,58 @@
 
   "inrp.rule.pvp_disabled": "PvP is disabled for players in Roleplay mode.",
   "inrp.rule.block_break_disabled": "Block breaking is disabled in Roleplay mode.",
-  "inrp.rule.block_place_disabled": "Block placing is disabled in Roleplay mode."
+  "inrp.rule.block_place_disabled": "Block placing is disabled in Roleplay mode.",
+
+  "inrp.lives.tab.dead": "[DEAD]",
+  "inrp.lives.unlimited": "Unlimited",
+  "inrp.lives.status_alive": "Alive",
+  "inrp.lives.status_dead": "Dead",
+  "inrp.lives.header": "=== Lives & Deaths of %s ===",
+  "inrp.lives.info_deaths": "Deaths: %s",
+  "inrp.lives.info_max": "Max Lives: %s",
+  "inrp.lives.info_remaining": "Remaining Lives: %s",
+  "inrp.lives.info_status": "Status: %s",
+  "inrp.lives.eliminated.broadcast": "%s has run out of lives and is permanently dead!",
+  "inrp.lives.spectator_message": "Your lives have run out! You are now in Spectator mode until an admin revives you.",
+  "inrp.lives.kick_message": "Your lives have run out! You have been eliminated from RP.\nPlease wait for an administrator to revive your character.",
+  "inrp.lives.revived_notification": "You have been revived by an administrator! Welcome back.",
+  
+  "inrp.admin.lives.set.success": "Set max lives to %s for %s player(s).",
+  "inrp.admin.lives.revive.success": "Revived %s player(s) successfully.",
+  "inrp.admin.lives.setdeaths.success": "Set death count to %s for %s player(s).",
+  "inrp.admin.lives.action.success": "Lives elimination action set to %s.",
+  "inrp.admin.lives.action.already": "Lives elimination action is already set to %s.",
+  "inrp.admin.lives.applydefault.success": "Applied default max lives (%s) to %s player(s).",
+  "inrp.admin.lives.applydefault.disabled": "Default max lives is currently disabled (-1). Set a value in the config first.",
+
+  "inrp.roll.no_one_heard": "(no one else heard your roll)",
+
+  "inrp.admin.confirm.pending": "This action will affect: %s. Click to confirm or type /rpadmin confirm within 10 seconds.",
+  "inrp.admin.confirm.success": "Action confirmed and executed.",
+  "inrp.admin.confirm.expired": "No pending action or it has expired.",
+  "inrp.admin.confirm.click": "[CONFIRM]",
+  "inrp.admin.confirm.desc.setmode": "Set RP mode for %s player(s) to %s",
+  "inrp.admin.confirm.desc.setlives": "Set max lives for %s player(s) to %s",
+  "inrp.admin.confirm.desc.setdeaths": "Set death count for %s player(s) to %s",
+  "inrp.admin.confirm.desc.applydefault": "Apply default lives to %s player(s) (max: %s)",
+
+  "inrp.error.players_only": "Only players can execute this command.",
+
+  "inrp.help.header": "=== In-RP Help ===",
+  "inrp.help.rp": "/rp - Check your current RP status",
+  "inrp.help.rp_on": "/rp on - Enter Roleplay mode",
+  "inrp.help.rp_off": "/rp off - Exit Roleplay mode",
+  "inrp.help.rp_toggle": "/rp toggle - Toggle Roleplay mode",
+  "inrp.help.roll": "/roll [dice] - Roll dice (e.g. /roll 20, /roll 2d6)",
+  "inrp.help.lives": "/lives [player] - View lives and death info",
+
+  "inrp.admin.help.header": "=== In-RP Admin Help ===",
+  "inrp.admin.help.set": "/rpadmin set <targets> <on|off> - Set RP mode for players",
+  "inrp.admin.help.config": "/rpadmin config <option> <value> - Change server config",
+  "inrp.admin.help.lives_set": "/rpadmin lives set <targets> <amount> - Set max lives",
+  "inrp.admin.help.lives_revive": "/rpadmin lives revive <targets> - Revive players",
+  "inrp.admin.help.lives_setdeaths": "/rpadmin lives setdeaths <targets> <amount> - Set death count",
+  "inrp.admin.help.lives_action": "/rpadmin lives action <spectator|kick> - Set elimination action",
+  "inrp.admin.help.lives_applydefault": "/rpadmin lives applydefault [targets] - Apply default lives",
+  "inrp.admin.help.confirm": "/rpadmin confirm - Confirm a pending bulk action"
 }

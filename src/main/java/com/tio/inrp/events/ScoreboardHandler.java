@@ -38,6 +38,17 @@ public class ScoreboardHandler {
             }
         }
         player.refreshDisplayName();
+        refreshPlayerTabList(player);
+    }
+
+    public static void refreshPlayerTabList(ServerPlayer player) {
+        if (player == null || player.server == null) return;
+        player.server.getPlayerList().broadcastAll(
+                new net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket(
+                        net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket.Action.UPDATE_DISPLAY_NAME,
+                        player
+                )
+        );
     }
 
     @SubscribeEvent
