@@ -1,23 +1,23 @@
 package com.tio.inrp.config;
 
 import java.util.List;
-import net.neoforged.neoforge.common.ModConfigSpec;
+import net.minecraftforge.common.ForgeConfigSpec;
 
 public class InRPConfig {
-    private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
+    private static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
 
-    public static final ModConfigSpec.ConfigValue<String> SERVER_LANGUAGE;
-    public static final ModConfigSpec.BooleanValue PVP_ALLOWED_IN_RP;
-    public static final ModConfigSpec.BooleanValue BLOCK_BREAK_ALLOWED_IN_RP;
-    public static final ModConfigSpec.BooleanValue BLOCK_PLACE_ALLOWED_IN_RP;
-    public static final ModConfigSpec.BooleanValue OP_BYPASS_RESTRICTIONS;
-    public static final ModConfigSpec.IntValue ROLL_DEFAULT_SIDES;
-    public static final ModConfigSpec.DoubleValue ROLL_PROXIMITY_RADIUS;
-    public static final ModConfigSpec.ConfigValue<String> CHAT_SUFFIX;
-    public static final ModConfigSpec.ConfigValue<String> NAMETAG_SUFFIX;
-    public static final ModConfigSpec.ConfigValue<String> LIVES_ACTION;
-    public static final ModConfigSpec.IntValue DEFAULT_MAX_LIVES;
-    public static final ModConfigSpec.BooleanValue COUNT_DEATHS_ONLY_IN_RP;
+    public static final ForgeConfigSpec.ConfigValue<String> SERVER_LANGUAGE;
+    public static final ForgeConfigSpec.BooleanValue PVP_ALLOWED_IN_RP;
+    public static final ForgeConfigSpec.BooleanValue BLOCK_BREAK_ALLOWED_IN_RP;
+    public static final ForgeConfigSpec.BooleanValue BLOCK_PLACE_ALLOWED_IN_RP;
+    public static final ForgeConfigSpec.BooleanValue OP_BYPASS_RESTRICTIONS;
+    public static final ForgeConfigSpec.IntValue ROLL_DEFAULT_SIDES;
+    public static final ForgeConfigSpec.DoubleValue ROLL_PROXIMITY_RADIUS;
+    public static final ForgeConfigSpec.ConfigValue<String> CHAT_SUFFIX;
+    public static final ForgeConfigSpec.ConfigValue<String> NAMETAG_SUFFIX;
+    public static final ForgeConfigSpec.ConfigValue<String> LIVES_ACTION;
+    public static final ForgeConfigSpec.IntValue DEFAULT_MAX_LIVES;
+    public static final ForgeConfigSpec.BooleanValue COUNT_DEATHS_ONLY_IN_RP;
 
     static {
         BUILDER.push("general");
@@ -85,5 +85,5 @@ public class InRPConfig {
         BUILDER.pop();
     }
 
-    public static final ModConfigSpec SPEC = BUILDER.build();
+    public static final ForgeConfigSpec SPEC = BUILDER.build();
 }

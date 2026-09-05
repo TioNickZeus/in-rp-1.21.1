@@ -7,20 +7,24 @@ import com.tio.inrp.commands.RPCommand;
 import com.tio.inrp.commands.RollCommand;
 import com.tio.inrp.config.InRPConfig;
 import com.tio.inrp.data.InRPAttachments;
+import com.tio.inrp.data.InRPLivesManager;
 import com.tio.inrp.events.ChatEventHandler;
 import com.tio.inrp.events.LivesEventHandler;
 import com.tio.inrp.events.RPGameplayRulesHandler;
 import com.tio.inrp.events.ScoreboardHandler;
 import com.tio.inrp.util.LocalizationHelper;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.ModContainer;
-import net.neoforged.fml.common.Mod;
-import net.neoforged.fml.config.ModConfig;
-import net.neoforged.fml.event.config.ModConfigEvent;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.RegisterCommandsEvent;
-import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.RegisterCommandsEvent;
+import net.minecraftforge.event.server.ServerStartingEvent;
+import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.IExtensionPoint;
+import net.minecraftforge.fml.ModLoadingContext;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.config.ModConfig;
+import net.minecraftforge.fml.event.config.ModConfigEvent;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.network.NetworkConstants;
 import org.slf4j.Logger;
 
 @Mod(InRP.MODID)
@@ -28,24 +32,33 @@ public class InRP {
     public static final String MODID = "inrp";
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    public InRP(IEventBus modEventBus, ModContainer modContainer) {
+    public InRP(FMLJavaModLoadingContext context) {
         LOGGER.info("Initializing In-RP mod...");
 
-        // Register data attachments
-        InRPAttachments.ATTACHMENT_TYPES.register(modEventBus);
+        IEventBus modEventBus = context.getModEventBus();
 
         // Register Server Config
-        modContainer.registerConfig(ModConfig.Type.SERVER, InRPConfig.SPEC);
+        context.registerConfig(ModConfig.Type.SERVER, InRPConfig.SPEC);
+
+        // Tell Forge that this is a server-side only mod so clients don't need it installed
+        context.registerExtensionPoint(
+                IExtensionPoint.DisplayTest.class,
+                () -> new IExtensionPoint.DisplayTest(
+                        () -> NetworkConstants.IGNORESERVERONLY,
+                        (remoteVersion, isFromServer) -> true
+                )
+        );
 
         // Listen for config reloading/loading to refresh translations
         modEventBus.addListener(this::onConfigLoad);
 
-        // Register game events on NeoForge bus
-        NeoForge.EVENT_BUS.register(ScoreboardHandler.class);
-        NeoForge.EVENT_BUS.register(ChatEventHandler.class);
-        NeoForge.EVENT_BUS.register(RPGameplayRulesHandler.class);
-        NeoForge.EVENT_BUS.register(LivesEventHandler.class);
-        NeoForge.EVENT_BUS.register(this);
+        // Register game events on MinecraftForge bus
+        MinecraftForge.EVENT_BUS.register(ScoreboardHandler.class);
+        MinecraftForge.EVENT_BUS.register(ChatEventHandler.class);
+        MinecraftForge.EVENT_BUS.register(RPGameplayRulesHandler.class);
+        MinecraftForge.EVENT_BUS.register(LivesEventHandler.class);
+        MinecraftForge.EVENT_BUS.register(InRPAttachments.class);
+        MinecraftForge.EVENT_BUS.register(this);
     }
 
     private void onConfigLoad(ModConfigEvent event) {
@@ -67,6 +80,6 @@ public class InRP {
     public void onServerStarting(ServerStartingEvent event) {
         LOGGER.info("In-RP mod active on server.");
         LocalizationHelper.reloadTranslations();
-        com.tio.inrp.data.InRPLivesManager.init(event.getServer());
+        InRPLivesManager.init(event.getServer());
     }
 }

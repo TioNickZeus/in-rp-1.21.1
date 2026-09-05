@@ -63,19 +63,26 @@ public class LocalizationHelper {
     public static String format(String key, Object... args) {
         String raw = getRaw(key);
         try {
-            return String.format(raw, args);
+            Object[] formattedArgs = new Object[args.length];
+            for (int i = 0; i < args.length; i++) {
+                if (args[i] instanceof Component c) {
+                    formattedArgs[i] = c.getString();
+                } else {
+                    formattedArgs[i] = args[i];
+                }
+            }
+            return String.format(raw, formattedArgs);
         } catch (Exception e) {
             return raw;
         }
     }
 
     public static MutableComponent getMessage(String key, Object... args) {
-        String raw = getRaw(key);
-        return Component.translatableWithFallback(key, raw, args);
+        return Component.literal(format(key, args));
     }
 
     public static MutableComponent getPrefixedMessage(String key, Object... args) {
-        return Component.translatableWithFallback("inrp.prefix", getRaw("inrp.prefix"))
+        return Component.literal(getRaw("inrp.prefix"))
                 .append(getMessage(key, args));
     }
 }
