@@ -23,8 +23,10 @@ public class ScoreboardHandler {
             team.setDisplayName(Component.literal("In RP"));
         }
         
-        Component suffixComponent = Component.literal(" ")
-                .append(LocalizationHelper.getMessage("inrp.nametag.suffix").withStyle(ChatFormatting.GRAY));
+        String configNametag = InRPConfig.NAMETAG_SUFFIX != null ? InRPConfig.NAMETAG_SUFFIX.get() : null;
+        Component suffixComponent = (configNametag != null && !configNametag.isEmpty())
+                ? Component.literal(configNametag).withStyle(ChatFormatting.GRAY)
+                : Component.literal(" ").append(LocalizationHelper.getMessage("inrp.nametag.suffix").withStyle(ChatFormatting.GRAY));
         team.setPlayerSuffix(suffixComponent);
 
         boolean inRP = InRPAttachments.isInRP(player);
