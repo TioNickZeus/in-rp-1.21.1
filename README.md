@@ -8,9 +8,14 @@ A lightweight, server-friendly **Roleplay (RP) Switch & Utility Mod** for **Mine
 
 - **100% Server-Side Compatible**: Vanilla Minecraft clients can connect to servers running this mod without needing NeoForge or any client-side mods installed!
 - **RP Switch (`/rp`)**: Easily toggle in and out of character. Status persists across player deaths, dimension changes, and server restarts using NeoForge Data Attachments.
+- **AFK System (`/afk`)**:
+  - Automatically detects inactive players (every 5 seconds, near-zero CPU cost) or manual toggle via `/afk`.
+  - Automatically disables RP mode upon entering AFK to protect character immersion and avoid involuntary deaths.
+  - Distinct visual markers: `[AFK]` tag on the Tab list and ` [AFK]` suffix on overhead nametag.
+  - Instant wake-up upon movement, camera rotation, or typing in chat.
+  - Optional configurable idle kick.
 - **Dynamic Overhead & Chat Identifiers**:
-  - Displays a clean suffix above the player's head (e.g., `Player [in RP]`) via native Minecraft Scoreboard Teams.
-  - Formats chat with a roleplay suffix (e.g., `Player [RP]: message`).
+  - Displays a unified roleplay suffix (e.g., `Player [RP]`) both above the player's head and in chat via native Minecraft Scoreboard Teams without duplication.
 - **Modular Dice Roller (`/roll`)**:
   - Standard dice: `/roll` (default 1d20), `/roll 20`, `/roll 100`.
   - Classic RPG notation: `/roll 2d6`, `/roll 3d20`, `/roll 1d100` with sum and individual die breakdown.
@@ -46,6 +51,7 @@ A lightweight, server-friendly **Roleplay (RP) Switch & Utility Mod** for **Mine
 | `/rp off` | Everyone | Exits Roleplay mode. |
 | `/rp toggle` | Everyone | Toggles between In-RP and Off-RP. |
 | `/rp help` | Everyone | Shows a list of all player commands. |
+| `/afk` | Everyone | Toggles AFK (away from keyboard) status with 3s anti-spam cooldown. |
 | `/roll` | Everyone | Rolls a default 20-sided die (1-20). |
 | `/roll <sides>` | Everyone | Rolls a die with a specified number of sides (e.g. `/roll 100`). |
 | `/roll <dice>` | Everyone | Rolls dice using RPG notation (e.g. `/roll 2d6`, `/roll 3d20`). |
@@ -117,6 +123,19 @@ The server configuration file is generated automatically at `config/inrp-server.
 
     # If true, only deaths while in RP mode count toward the lives system
     countDeathsOnlyInRP = false
+
+[afk]
+    # Enable or disable the AFK (inactivity) system
+    afkEnabled = true
+
+    # Idle time in seconds before a player is automatically marked as AFK
+    afkTimeoutSeconds = 300
+
+    # Idle time in seconds before an AFK player is kicked (-1 to disable kick)
+    afkKickSeconds = -1
+
+    # If true, entering AFK mode automatically disables RP mode
+    autoDisableRPOnAFK = true
 ```
 
 ---
@@ -125,11 +144,11 @@ The server configuration file is generated automatically at `config/inrp-server.
 
 ### Dedicated Server
 1. Ensure your server is running **NeoForge 1.21.1** (NeoForge 21.1.249 or newer).
-2. Place the compiled `inrp-1.0.3.jar` into the server's `mods/` directory.
+2. Place the compiled `inrp-1.0.5.jar` into the server's `mods/` directory.
 3. Start the server. Players with pure **Vanilla Minecraft 1.21.1** clients can connect immediately!
 
 ### Singleplayer / Client
-1. Place the `inrp-1.0.3.jar` in your `.minecraft/mods/` directory.
+1. Place the `inrp-1.0.5.jar` in your `.minecraft/mods/` directory.
 2. Launch Minecraft using the NeoForge 1.21.1 profile.
 
 ---
