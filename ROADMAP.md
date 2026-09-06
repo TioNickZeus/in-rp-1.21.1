@@ -11,19 +11,31 @@ Este documento serve como um painel central para registrar ideias, sugestões, m
 
 ---
 
-## 💡 Ideias de Mecânicas de Roleplay (Gameplay)
+## 💬 Chat Local & Global (Próxima Grande Funcionalidade)
 
-### 1. Comandos de Expressão & Chat de Proximidade
 - [ ] **Chat Local por Padrão (Proximidade)**:
   - O chat padrão do jogo (apenas apertar `T` e enviar mensagem) passa a ser **local por proximidade** (com raio configurável no TOML, ex: 30 a 50 blocos).
   - Apenas jogadores dentro do raio recebem a mensagem no chat (ex: `[L] Player: mensagem`).
   - Notificação sutil caso nenhum jogador esteja por perto: `(Ninguém por perto ouviu você)` (igual à mecânica já existente no `/roll`).
-  - Toggles e opções na config: `localChatEnabled`, `localChatRadius`, `opSpyLocalChat` (para admins poderem monitorar todo o chat local se quiserem).
+  - Toggles e opções na config: `localChatEnabled`, `localChatRadius`.
 - [ ] **`/g <mensagem>` (ou `/global`)**: Chat global do servidor para quando o chat local estiver ativo por padrão. Permite falar com todos os jogadores do servidor (com prefixo `[G]` e *cooldown* configurável para evitar *flood*).
+- [ ] **Chat Spy para Moderação (`/rpadmin spy` ou `/chatspy`)**:
+  - Ferramenta dedicada para a administração e moderação monitorar canais em tempo real.
+  - Comando *toggle* por admin (com permissão OP nível 2 ou nó de permissão correspondente).
+  - Permite espiar:
+    - Mensagens do chat local fora do alcance do administrador (com prefixo discreto, ex: `[SPY:Local]`).
+    - Mensagens privadas do vanilla (`/tell`, `/msg`, `/w`) entre jogadores para coibir metagaming e abusos (ex: `[SPY:PM] JogadorA -> JogadorB: texto`).
+    - Sussurros de proximidade ultra-curtos (`/sussurro`).
+  - Configurações dedicadas no TOML para a staff controlar o que pode ser espiado (`spyLocalChat = true`, `spyPrivateMessages = true`).
+
+---
+
+## 💡 Ideias de Mecânicas de Roleplay (Gameplay)
+
+### 1. Comandos de Expressão
 - [ ] **`/off <mensagem>` (ou `/b`)**: Permite falar fora do personagem (Out-Of-Character / OOC) mesmo com o RP ligado. A mensagem é exibida com tag destacada e cor neutra (ex: `(( [OFF] Player: mensagem ))` em cinza), ideal para avisos rápidos entre jogadores sem precisar desativar e reativar o `/rp`.
-- [ ] **`/me <ação>`**: Permite ao jogador narrar ações em terceira pessoa no chat local (ex: `* Arthur puxa sua espada com cautela.*`).
-- [ ] **`/do <descrição>`**: Narração de acontecimentos do ambiente ou de cena (ex: `[CENA] O cavalo parece estar muito cansado após a longa viagem.`).
-- [ ] **`/w` ou `/sussurro <mensagem>`**: Chat com raio de proximidade reduzido (ex: 3 a 5 blocos) para conversas sigilosas.
+- [ ] **`/do <descrição>`**: Narração de acontecimentos do ambiente ou de cena em terceira pessoa (ex: `[CENA] O cavalo parece estar muito cansado após a longa viagem.`).
+- [ ] **`/sussurro <mensagem>`**: Fala em voz baixa com raio de proximidade ultra-curto (ex: 3 a 5 blocos) para conversas sigilosas entre personagens próximos (diferente do `/msg`/`/tell` vanilla que é privado e global).
 
 ### 2. Sistema de Identidade e Personagem
 - [ ] **Nome de Personagem (RP Name)**: Permitir definir um nome fictício para o personagem (ex: `/rp nome <Nome Sobrenome>`), substituindo ou complementando o nick do Minecraft no chat e nametag.
@@ -45,9 +57,26 @@ Este documento serve como um painel central para registrar ideias, sugestões, m
 
 ---
 
+## 🚀 Visão Futura: Ecossistema "In-RP Companion / Addon"
+
+> **Fase de Planejamento:** A ser desenvolvido **apenas após** o mod principal (`In-RP Core`) estar maduro, completo e estável.
+
+A ideia deste projeto futuro é expandir as fronteiras do RPG quando o servidor e os jogadores optarem por uma experiência modded completa:
+
+* **Papel do `In-RP` (Core):** Continua sendo o mod base de regras, lógica, vidas, dados e comandos, mantendo a capacidade de operar 100% server-side para clientes vanilla.
+* **Papel do `In-RP Companion` (Mod Client & Server):**
+  - Instalado **tanto no servidor quanto nos clientes** que desejam o pacote estendido.
+  - **Blocos e Itens Customizados:** Adição de blocos de ambientação/cenário para roleplay, itens consumíveis (ex: contrato de vidas, poções/totens de renascimento, moedas de RPG).
+  - **Interfaces Gráficas (GUIs):** Telas nativas e modernas para criação/edição de ficha de personagem, rolagem visual de dados e painéis administrativos visuais.
+  - **HUD & Imersão:** Indicadores na tela para status de RP, vidas restantes e balões de fala flutuantes (*speech bubbles*) sobre os personagens no chat local.
+  - **Efeitos Audiovisuais:** Sons e animações próprias integradas aos eventos do Core.
+
+---
+
 ## ⚙️ Diretrizes para Novas Implementações
 
 Ao escolher e implementar qualquer funcionalidade deste documento:
-1. Manter a premissa de ser **100% Server-Side** (clientes vanilla conectam sem precisar do mod).
+1. Manter a premissa de ser **100% Server-Side** para o mod base `In-RP Core` (clientes vanilla conectam sem precisar do mod).
 2. Respeitar as diretrizes de invariantes e testes do [ARCHITECTURE.md](file:///c:/Users/Rian/Documents/GitHub/in-rp-1.21.1/ARCHITECTURE.md).
 3. Todas as mensagens devem possuir chaves correspondentes em `en_us.json` e `pt_br.json`.
+
