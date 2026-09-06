@@ -180,9 +180,10 @@ The resulting JAR file will be located in `build/libs/`.
 
 ---
 
-## 📐 Architecture
+## 📐 Architecture & Roadmap
 
-For detailed technical documentation, design decisions, data flows, and extension guidelines, see [`ARCHITECTURE.md`](ARCHITECTURE.md).
+- For detailed technical documentation, design decisions, data flows, and extension guidelines, see [`ARCHITECTURE.md`](ARCHITECTURE.md).
+- For upcoming features, backlog, and planned ideas, see [`ROADMAP.md`](ROADMAP.md).
 
 ---
 
