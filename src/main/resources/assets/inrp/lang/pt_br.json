@@ -73,6 +73,15 @@
   "inrp.help.rp_toggle": "/rp toggle - Alternar modo Roleplay",
   "inrp.help.roll": "/roll [dado] - Rolar dados (ex: /roll 20, /roll 2d6)",
   "inrp.help.lives": "/lives [jogador] - Ver informações de vidas e mortes",
+  "inrp.help.afk": "/afk - Alternar status de ausente (AFK)",
+
+  "inrp.afk.tab.tag": "[AFK]",
+  "inrp.afk.nametag.suffix": "[AFK]",
+  "inrp.afk.enter.broadcast": "%s agora está ausente.",
+  "inrp.afk.actionbar.return": "Você não está mais ausente.",
+  "inrp.afk.kick_message": "Você foi desconectado por inatividade prolongada.",
+  "inrp.afk.cooldown": "Aguarde um momento antes de usar /afk novamente.",
+  "inrp.afk.disabled": "O sistema de AFK está desativado no momento.",
 
   "inrp.admin.help.header": "=== Ajuda Admin In-RP ===",
   "inrp.admin.help.set": "/rpadmin set <alvos> <on|off> - Definir modo RP para jogadores",

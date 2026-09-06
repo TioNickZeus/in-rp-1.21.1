@@ -45,6 +45,7 @@ public class InRP {
         NeoForge.EVENT_BUS.register(ChatEventHandler.class);
         NeoForge.EVENT_BUS.register(RPGameplayRulesHandler.class);
         NeoForge.EVENT_BUS.register(LivesEventHandler.class);
+        NeoForge.EVENT_BUS.register(com.tio.inrp.events.AFKEventHandler.class);
         NeoForge.EVENT_BUS.register(this);
     }
 
@@ -60,7 +61,8 @@ public class InRP {
         RollCommand.register(event.getDispatcher());
         RPAdminCommand.register(event.getDispatcher());
         LivesCommand.register(event.getDispatcher());
-        LOGGER.info("Registered In-RP commands: /rp, /roll, /rpadmin, /lives");
+        com.tio.inrp.commands.AFKCommand.register(event.getDispatcher());
+        LOGGER.info("Registered In-RP commands: /rp, /roll, /rpadmin, /lives, /afk");
     }
 
     @SubscribeEvent

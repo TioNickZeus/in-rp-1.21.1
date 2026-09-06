@@ -73,6 +73,15 @@
   "inrp.help.rp_toggle": "/rp toggle - Toggle Roleplay mode",
   "inrp.help.roll": "/roll [dice] - Roll dice (e.g. /roll 20, /roll 2d6)",
   "inrp.help.lives": "/lives [player] - View lives and death info",
+  "inrp.help.afk": "/afk - Toggle AFK (away from keyboard) status",
+
+  "inrp.afk.tab.tag": "[AFK]",
+  "inrp.afk.nametag.suffix": "[AFK]",
+  "inrp.afk.enter.broadcast": "%s is now AFK.",
+  "inrp.afk.actionbar.return": "You are no longer AFK.",
+  "inrp.afk.kick_message": "You were kicked for inactivity.",
+  "inrp.afk.cooldown": "Please wait a moment before using /afk again.",
+  "inrp.afk.disabled": "The AFK system is currently disabled.",
 
   "inrp.admin.help.header": "=== In-RP Admin Help ===",
   "inrp.admin.help.set": "/rpadmin set <targets> <on|off> - Set RP mode for players",

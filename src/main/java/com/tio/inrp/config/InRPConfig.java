@@ -1,6 +1,6 @@
 package com.tio.inrp.config;
 
-import java.util.List;
+import java.util.Arrays;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 public class InRPConfig {
@@ -18,6 +18,10 @@ public class InRPConfig {
     public static final ModConfigSpec.ConfigValue<String> LIVES_ACTION;
     public static final ModConfigSpec.IntValue DEFAULT_MAX_LIVES;
     public static final ModConfigSpec.BooleanValue COUNT_DEATHS_ONLY_IN_RP;
+    public static final ModConfigSpec.BooleanValue AFK_ENABLED;
+    public static final ModConfigSpec.IntValue AFK_TIMEOUT_SECONDS;
+    public static final ModConfigSpec.IntValue AFK_KICK_SECONDS;
+    public static final ModConfigSpec.BooleanValue AUTO_DISABLE_RP_ON_AFK;
 
     static {
         BUILDER.push("general");
@@ -72,7 +76,7 @@ public class InRPConfig {
 
         LIVES_ACTION = BUILDER
                 .comment("Action taken when a player loses all lives ('spectator' or 'kick')")
-                .defineInList("livesAction", "spectator", List.of("spectator", "kick"));
+                .defineInList("livesAction", "spectator", Arrays.asList("spectator", "kick"));
 
         DEFAULT_MAX_LIVES = BUILDER
                 .comment("Default max lives for players (-1 for unlimited/disabled)")
@@ -81,6 +85,26 @@ public class InRPConfig {
         COUNT_DEATHS_ONLY_IN_RP = BUILDER
                 .comment("If true, only deaths while in RP mode count toward the lives system")
                 .define("countDeathsOnlyInRP", false);
+
+        BUILDER.pop();
+
+        BUILDER.push("afk");
+
+        AFK_ENABLED = BUILDER
+                .comment("Enable or disable the AFK (inactivity) system")
+                .define("afkEnabled", true);
+
+        AFK_TIMEOUT_SECONDS = BUILDER
+                .comment("Idle time in seconds before a player is automatically marked as AFK (default: 300 = 5 minutes)")
+                .defineInRange("afkTimeoutSeconds", 300, 10, 86400);
+
+        AFK_KICK_SECONDS = BUILDER
+                .comment("Idle time in seconds before an AFK player is kicked (-1 to disable kick)")
+                .defineInRange("afkKickSeconds", -1, -1, 86400);
+
+        AUTO_DISABLE_RP_ON_AFK = BUILDER
+                .comment("If true, entering AFK mode automatically disables RP mode")
+                .define("autoDisableRPOnAFK", true);
 
         BUILDER.pop();
     }

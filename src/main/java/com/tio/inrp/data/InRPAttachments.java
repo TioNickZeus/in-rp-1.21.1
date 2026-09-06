@@ -45,6 +45,14 @@ public class InRPAttachments {
                     .build()
     );
 
+    public static final Supplier<AttachmentType<Boolean>> IS_AFK = ATTACHMENT_TYPES.register(
+            "is_afk",
+            () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL)
+                    .copyOnDeath()
+                    .build()
+    );
+
     // RP Mode
     public static boolean isInRP(Player player) {
         if (player == null) return false;
@@ -102,5 +110,16 @@ public class InRPAttachments {
     public static void setDead(Player player, boolean dead) {
         if (player == null) return;
         player.setData(IS_DEAD, dead);
+    }
+
+    // AFK Mode
+    public static boolean isAFK(Player player) {
+        if (player == null) return false;
+        return Boolean.TRUE.equals(player.getData(IS_AFK));
+    }
+
+    public static void setAFK(Player player, boolean afk) {
+        if (player == null) return;
+        player.setData(IS_AFK, afk);
     }
 }

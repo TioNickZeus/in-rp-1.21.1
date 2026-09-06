@@ -87,6 +87,14 @@ public class LivesEventHandler {
                         .append(deadTag)
                         .append(Component.literal(" "))
                         .append(player.getName()));
+            } else if (InRPAttachments.isAFK(player)) {
+                Component afkTag = LocalizationHelper.getMessage("inrp.afk.tab.tag")
+                        .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC);
+
+                event.setDisplayName(Component.empty()
+                        .append(afkTag)
+                        .append(Component.literal(" "))
+                        .append(player.getName()));
             } else {
                 event.setDisplayName(null);
             }

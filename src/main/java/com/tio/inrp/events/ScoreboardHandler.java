@@ -13,30 +13,58 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
 public class ScoreboardHandler {
     public static final String TEAM_NAME = "inrp_active";
+    public static final String TEAM_AFK_NAME = "inrp_afk";
 
     public static void updatePlayerScoreboard(ServerPlayer player) {
         if (player == null || player.server == null) return;
         ServerScoreboard scoreboard = player.server.getScoreboard();
-        PlayerTeam team = scoreboard.getPlayerTeam(TEAM_NAME);
-        if (team == null) {
-            team = scoreboard.addPlayerTeam(TEAM_NAME);
-            team.setDisplayName(Component.literal("In RP"));
-        }
-        
-        Component suffixComponent = Component.literal(" ")
-                .append(LocalizationHelper.getMessage("inrp.nametag.suffix").withStyle(ChatFormatting.GRAY));
-        team.setPlayerSuffix(suffixComponent);
 
+        // Active RP Team
+        PlayerTeam teamRP = scoreboard.getPlayerTeam(TEAM_NAME);
+        if (teamRP == null) {
+            teamRP = scoreboard.addPlayerTeam(TEAM_NAME);
+            teamRP.setDisplayName(Component.literal("In RP"));
+        }
+        Component suffixRP = Component.literal(" ")
+                .append(LocalizationHelper.getMessage("inrp.nametag.suffix").withStyle(ChatFormatting.GRAY));
+        teamRP.setPlayerSuffix(suffixRP);
+
+        // AFK Team
+        PlayerTeam teamAFK = scoreboard.getPlayerTeam(TEAM_AFK_NAME);
+        if (teamAFK == null) {
+            teamAFK = scoreboard.addPlayerTeam(TEAM_AFK_NAME);
+            teamAFK.setDisplayName(Component.literal("AFK"));
+        }
+        Component suffixAFK = Component.literal(" ")
+                .append(LocalizationHelper.getMessage("inrp.afk.nametag.suffix").withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC));
+        teamAFK.setPlayerSuffix(suffixAFK);
+
+        boolean isAFK = InRPAttachments.isAFK(player);
         boolean inRP = InRPAttachments.isInRP(player);
-        if (inRP) {
-            if (player.getTeam() != team) {
-                scoreboard.addPlayerToTeam(player.getScoreboardName(), team);
+
+        if (isAFK) {
+            if (player.getTeam() == teamRP) {
+                scoreboard.removePlayerFromTeam(player.getScoreboardName(), teamRP);
+            }
+            if (player.getTeam() != teamAFK) {
+                scoreboard.addPlayerToTeam(player.getScoreboardName(), teamAFK);
+            }
+        } else if (inRP) {
+            if (player.getTeam() == teamAFK) {
+                scoreboard.removePlayerFromTeam(player.getScoreboardName(), teamAFK);
+            }
+            if (player.getTeam() != teamRP) {
+                scoreboard.addPlayerToTeam(player.getScoreboardName(), teamRP);
             }
         } else {
-            if (player.getTeam() == team) {
-                scoreboard.removePlayerFromTeam(player.getScoreboardName(), team);
+            if (player.getTeam() == teamRP) {
+                scoreboard.removePlayerFromTeam(player.getScoreboardName(), teamRP);
+            }
+            if (player.getTeam() == teamAFK) {
+                scoreboard.removePlayerFromTeam(player.getScoreboardName(), teamAFK);
             }
         }
+
         player.refreshDisplayName();
         refreshPlayerTabList(player);
     }

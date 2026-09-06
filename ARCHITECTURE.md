@@ -2,7 +2,7 @@
 
 > **Single Source of Truth (SSOT)** for the mod's technical architecture and design decisions.
 > Every AI, contributor, or maintainer must read this document before modifying any code.
-> **Last updated**: September 2026 — version 1.0.2
+> **Last updated**: September 2026 — version 1.0.5
 
 ---
 
@@ -23,6 +23,7 @@
 In-RP provides a complete **Roleplay (RP)** system for Minecraft servers:
 
 - **RP Toggle** — players enable/disable RP mode, receiving visual markers (nametag, chat, tab list).
+- **AFK System** — automatic and manual idle detection, RP auto-exit, tab list/nametag markers, and optional idle kick.
 - **Lives System** — death counting with configurable limits; eliminated players enter spectator or get kicked.
 - **Dice Rolling** — `/roll` with `NdS` notation and proximity broadcast.
 - **Gameplay Rules** — PvP, block break/place restrictions for RP players.
@@ -37,6 +38,7 @@ com.tio.inrp/
 ├── InRP.java                    ← Entry point (@Mod), bootstrapping
 ├── commands/                    ← Brigadier commands
 │   ├── RPCommand.java           ← /rp (on|off|toggle|help)
+│   ├── AFKCommand.java          ← /afk (toggle, voluntary broadcast, anti-spam)
 │   ├── RollCommand.java         ← /roll [NdS|N]
 │   ├── LivesCommand.java        ← /lives [player]
 │   └── RPAdminCommand.java      ← /rpadmin (set|config|lives|confirm|help)
@@ -46,10 +48,11 @@ com.tio.inrp/
 │   ├── InRPAttachments.java     ← NeoForge Data Attachments — player state
 │   └── InRPLivesManager.java   ← External JSON store for dead players
 ├── events/
+│   ├── AFKEventHandler.java     ← Inactivity detection, instant wake-up, optional kick
 │   ├── ChatEventHandler.java    ← [RP] suffix on name (NameFormat)
-│   ├── LivesEventHandler.java   ← Death cycle, respawn, login, tab list
+│   ├── LivesEventHandler.java   ← Death cycle, respawn, login, tab list ([DEAD] and [AFK])
 │   ├── RPGameplayRulesHandler.java ← PvP, block break/place restrictions
-│   └── ScoreboardHandler.java   ← Team `inrp_active`, nametag suffix
+│   └── ScoreboardHandler.java   ← Teams `inrp_active` & `inrp_afk`, nametag suffixes
 └── util/
     ├── ConfirmationManager.java ← Bulk action confirmation (10s TTL)
     └── LocalizationHelper.java  ← Server-side translations with en_us fallback
@@ -66,6 +69,7 @@ All commands are registered in `InRP.onRegisterCommands` via `RegisterCommandsEv
 | Class | Command | Permission | Description |
 |:---|:---|:---|:---|
 | `RPCommand` | `/rp` | None | Toggle RP, sound feedback |
+| `AFKCommand` | `/afk` | None | Toggle AFK status, global broadcast, 3s anti-spam |
 | `RollCommand` | `/roll` | None | Dice with proximity broadcast |
 | `LivesCommand` | `/lives` | None | Query lives (self or target) |
 | `RPAdminCommand` | `/rpadmin` | OP 2+ | Full administration |
@@ -74,7 +78,7 @@ All commands are registered in `InRP.onRegisterCommands` via `RegisterCommandsEv
 
 ### 2.2 `config/` — Configuration
 
-`InRPConfig` uses `ModConfigSpec.Builder` with TOML sections (`general`, `rules`, `roll`, `lives`). Registered as `ModConfig.Type.SERVER`.
+`InRPConfig` uses `ModConfigSpec.Builder` with TOML sections (`general`, `rules`, `roll`, `lives`, `afk`). Registered as `ModConfig.Type.SERVER`.
 
 | Section | Key | Type | Default | Validation |
 |:---|:---|:---|:---|:---|
@@ -90,6 +94,10 @@ All commands are registered in `InRP.onRegisterCommands` via `RegisterCommandsEv
 | lives | `livesAction` | String | `"spectator"` | `defineInList("spectator", "kick")` |
 | lives | `defaultMaxLives` | int | `-1` | `[-1, 100000]` |
 | lives | `countDeathsOnlyInRP` | bool | `false` | N/A |
+| afk | `afkEnabled` | bool | `true` | N/A |
+| afk | `afkTimeoutSeconds` | int | `300` | `[10, 86400]` |
+| afk | `afkKickSeconds` | int | `-1` | `[-1, 86400]` |
+| afk | `autoDisableRPOnAFK` | bool | `true` | N/A |
 
 **Reload**: when config is (re)loaded, `InRP.onConfigLoad` calls `LocalizationHelper.reloadTranslations()`.
 
@@ -102,6 +110,7 @@ NeoForge Data Attachments is the primary player state persistence mechanism. Dat
 | Attachment | Type | Default | Purpose |
 |:---|:---|:---|:---|
 | `IN_RP` | `Boolean` | `false` | Player is in RP mode |
+| `IS_AFK` | `Boolean` | `false` | Player is marked as AFK |
 | `DEATH_COUNT` | `Integer` | `0` | Accumulated death counter |
 | `MAX_LIVES` | `Integer` | `-1` | Lives limit (-1 = unlimited) |
 | `IS_DEAD` | `Boolean` | `false` | Player permanently dead |
@@ -118,10 +127,11 @@ An auxiliary store (`inrp_dead_players.json` in world folder) that tracks UUIDs 
 
 | Class | Events | Responsibility |
 |:---|:---|:---|
+| `AFKEventHandler` | `ServerTickEvent.Post`, `PlayerTickEvent.Post`, `ServerChatEvent`, `PlayerLoggedIn`, `PlayerLoggedOut` | Inactivity timer (100-tick interval), instant wake-up, optional kick |
 | `ChatEventHandler` | `NameFormat` | Appends `[RP]` suffix to RP player names in chat |
-| `LivesEventHandler` | `LivingDeath`, `PlayerRespawn`, `PlayerLoggedIn`, `TabListNameFormat` | All lives logic, elimination, revive, and `[DEAD]` tab tag |
+| `LivesEventHandler` | `LivingDeath`, `PlayerRespawn`, `PlayerLoggedIn`, `TabListNameFormat` | All lives logic, elimination, revive, and `[DEAD]` / `[AFK]` tab tags |
 | `RPGameplayRulesHandler` | `AttackEntity`, `BlockBreak`, `EntityPlace` | Cancels forbidden actions for RP players, with OP bypass |
-| `ScoreboardHandler` | `PlayerLoggedIn`, `PlayerRespawn`, `PlayerChangedDimension` | Manages `inrp_active` team for nametag suffix |
+| `ScoreboardHandler` | `PlayerLoggedIn`, `PlayerRespawn`, `PlayerChangedDimension` | Manages `inrp_active` and `inrp_afk` teams for nametag suffixes |
 
 ### 2.5 `util/` — Utilities
 
@@ -154,17 +164,47 @@ InRP.<init>                           ← Constructor called by FML
  ├─ InRPAttachments.ATTACHMENT_TYPES.register(modEventBus)
  ├─ modContainer.registerConfig(SERVER, InRPConfig.SPEC)
  ├─ modEventBus.addListener(onConfigLoad)     ← Reloads translations
- └─ NeoForge.EVENT_BUS.register(...)          ← 4 event handlers
+ └─ NeoForge.EVENT_BUS.register(...)          ← 5 event handlers (including AFKEventHandler)
 
 InRP.onServerStarting                  ← ServerStartingEvent
  ├─ LocalizationHelper.reloadTranslations()
  └─ InRPLivesManager.init(server)     ← Loads inrp_dead_players.json
 
 InRP.onRegisterCommands                ← RegisterCommandsEvent
- └─ Registers /rp, /roll, /rpadmin, /lives
+ └─ Registers /rp, /afk, /roll, /rpadmin, /lives
 ```
 
-### 3.2 Death and Lives Flow
+### 3.2 AFK Lifecycle and Wake-Up Flow
+
+```
+Inactivity Timer (ServerTickEvent.Post — every 100 ticks / 5s)
+ │
+ ├─ idleMillis >= kickTimeoutMillis (if > 0)?
+ │    └─ YES → player.connection.disconnect(...)
+ │
+ └─ idleMillis >= afkTimeoutMillis?
+      └─ YES && !isAFK(player) →
+           ├─ setAFK(player, true)
+           ├─ [autoDisableRPOnAFK] → setInRP(player, false)
+           └─ updatePlayerScoreboard() + refreshPlayerTabList() [Silent entry]
+
+Voluntary Command: /afk
+ │
+ ├─ Cooldown check (3s per UUID) → passed?
+ ├─ !isAFK → setAFK(true), disable RP if configured, broadcast to all in chat
+ └─ isAFK  → setAFK(false), update nametag & tab, action bar message to player
+
+Wake-Up Detection (PlayerTickEvent.Post / ServerChatEvent)
+ │
+ ├─ [Guard] !isAFK(player) → RETURN (zero overhead)
+ └─ [If AFK and recent action detected (<1500ms)] →
+      ├─ setAFK(player, false)
+      ├─ ScoreboardHandler.updatePlayerScoreboard(player)
+      ├─ Action bar message: "You are no longer AFK"
+      └─ Sound feedback (UI_BUTTON_CLICK)
+```
+
+### 3.3 Death and Lives Flow
 
 ```
 LivingDeathEvent(player)
@@ -193,7 +233,7 @@ PlayerRespawnEvent / PlayerLoggedInEvent(player)
       └─ [If alive] → update tab list
 ```
 
-### 3.3 Bulk Action Confirmation Flow
+### 3.4 Bulk Action Confirmation Flow
 
 ```
 Admin executes: /rpadmin set @a off
@@ -214,11 +254,11 @@ Admin executes: /rpadmin set @a off
  └─ Console (no UUID) → Always executes immediately (confirmation bypass)
 ```
 
-### 3.4 Persistence — Where Data Lives
+### 3.5 Persistence — Where Data Lives
 
 | Data | Mechanism | File | Survives death? | Works offline? |
 |:---|:---|:---|:---|:---|
-| RP status, deaths, max lives, is_dead | NeoForge Data Attachment | `<world>/playerdata/<uuid>.dat` | Yes (`copyOnDeath`) | Read/written by NeoForge |
+| RP status, AFK, deaths, max lives, is_dead | NeoForge Data Attachment | `<world>/playerdata/<uuid>.dat` | Yes (`copyOnDeath`) | Read/written by NeoForge |
 | Dead players list | `InRPLivesManager` JSON | `<world>/inrp_dead_players.json` | N/A | Yes (independent store) |
 | Configuration | `ModConfigSpec` | `<world>/serverconfig/inrp-server.toml` | N/A | N/A |
 
