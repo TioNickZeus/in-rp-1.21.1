@@ -26,7 +26,7 @@ public class ScoreboardHandler {
             teamRP.setDisplayName(Component.literal("In RP"));
         }
         Component suffixRP = Component.literal(" ")
-                .append(LocalizationHelper.getMessage("inrp.nametag.suffix").withStyle(ChatFormatting.GRAY));
+                .append(LocalizationHelper.getMessage("inrp.chat.suffix").withStyle(ChatFormatting.GOLD));
         teamRP.setPlayerSuffix(suffixRP);
 
         // AFK Team

@@ -49,10 +49,9 @@ com.tio.inrp/
 │   └── InRPLivesManager.java   ← External JSON store for dead players
 ├── events/
 │   ├── AFKEventHandler.java     ← Inactivity detection, instant wake-up, optional kick
-│   ├── ChatEventHandler.java    ← [RP] suffix on name (NameFormat)
 │   ├── LivesEventHandler.java   ← Death cycle, respawn, login, tab list ([DEAD] and [AFK])
 │   ├── RPGameplayRulesHandler.java ← PvP, block break/place restrictions
-│   └── ScoreboardHandler.java   ← Teams `inrp_active` & `inrp_afk`, nametag suffixes
+│   └── ScoreboardHandler.java   ← Teams `inrp_active` & `inrp_afk`, unified nametag & chat suffixes
 └── util/
     ├── ConfirmationManager.java ← Bulk action confirmation (10s TTL)
     └── LocalizationHelper.java  ← Server-side translations with en_us fallback
@@ -128,10 +127,9 @@ An auxiliary store (`inrp_dead_players.json` in world folder) that tracks UUIDs 
 | Class | Events | Responsibility |
 |:---|:---|:---|
 | `AFKEventHandler` | `ServerTickEvent.Post`, `PlayerTickEvent.Post`, `ServerChatEvent`, `PlayerLoggedIn`, `PlayerLoggedOut` | Inactivity timer (100-tick interval), instant wake-up, optional kick |
-| `ChatEventHandler` | `NameFormat` | Appends `[RP]` suffix to RP player names in chat |
 | `LivesEventHandler` | `LivingDeath`, `PlayerRespawn`, `PlayerLoggedIn`, `TabListNameFormat` | All lives logic, elimination, revive, and `[DEAD]` / `[AFK]` tab tags |
 | `RPGameplayRulesHandler` | `AttackEntity`, `BlockBreak`, `EntityPlace` | Cancels forbidden actions for RP players, with OP bypass |
-| `ScoreboardHandler` | `PlayerLoggedIn`, `PlayerRespawn`, `PlayerChangedDimension` | Manages `inrp_active` and `inrp_afk` teams for nametag suffixes |
+| `ScoreboardHandler` | `PlayerLoggedIn`, `PlayerRespawn`, `PlayerChangedDimension` | Manages `inrp_active` and `inrp_afk` teams for unified nametag and chat suffixes |
 
 ### 2.5 `util/` — Utilities
 

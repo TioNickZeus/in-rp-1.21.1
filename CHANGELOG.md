@@ -31,6 +31,7 @@ All notable changes to the In-RP mod will be documented in this file.
 
 ### 🧹 Improvements & Tweaks
 
+- **Unified RP Suffix & Chat Redundancy Fix** — Eliminated redundant `[in RP]` tag in chat (`<Dev [RP] [in RP]>`). Suffix is now handled cleanly and strictly by the `inrp_active` scoreboard team using `[RP]`, removing duplicate `NameFormat` event listeners.
 - **Scoreboard Team Management** — Updated `ScoreboardHandler` to cleanly switch players between `inrp_active` and `inrp_afk` teams.
 - **Tab List Tag Priority** — Updated `LivesEventHandler.onTabListNameFormat` to prioritize `[DEAD]` over `[AFK]`.
 - **Data Attachments** — Added `IS_AFK` boolean attachment with `copyOnDeath()`.

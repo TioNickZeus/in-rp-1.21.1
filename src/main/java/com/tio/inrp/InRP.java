@@ -42,7 +42,6 @@ public class InRP {
 
         // Register game events on NeoForge bus
         NeoForge.EVENT_BUS.register(ScoreboardHandler.class);
-        NeoForge.EVENT_BUS.register(ChatEventHandler.class);
         NeoForge.EVENT_BUS.register(RPGameplayRulesHandler.class);
         NeoForge.EVENT_BUS.register(LivesEventHandler.class);
         NeoForge.EVENT_BUS.register(com.tio.inrp.events.AFKEventHandler.class);

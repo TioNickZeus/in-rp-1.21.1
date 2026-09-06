@@ -1,21 +1,10 @@
 package com.tio.inrp.events;
 
-import com.tio.inrp.data.InRPAttachments;
-import net.minecraft.ChatFormatting;
-import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-
+/**
+ * Formerly handled [RP] name formatting via NameFormat.
+ * Roleplay and AFK name/chat suffixes are now handled cleanly and uniformly
+ * by ScoreboardHandler (via Minecraft Scoreboard teams) to prevent duplicate suffixes in chat.
+ */
 public class ChatEventHandler {
-
-    @SubscribeEvent
-    public static void onNameFormat(PlayerEvent.NameFormat event) {
-        if (event.getEntity() instanceof ServerPlayer player && InRPAttachments.isInRP(player)) {
-            event.setDisplayname(Component.empty()
-                    .append(event.getDisplayname())
-                    .append(Component.literal(" "))
-                    .append(com.tio.inrp.util.LocalizationHelper.getMessage("inrp.chat.suffix").withStyle(ChatFormatting.GOLD)));
-        }
-    }
+    // Kept for backward compatibility; event registration moved to ScoreboardHandler.
 }
