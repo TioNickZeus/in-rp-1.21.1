@@ -66,7 +66,7 @@ public class InRP {
     }
 
     private void onConfigLoad(ModConfigEvent event) {
-        if (event.getConfig().getSpec() == InRPConfig.SPEC) {
+        if (event.getConfig().getSpec() == InRPConfig.SPEC && !(event instanceof ModConfigEvent.Unloading)) {
             LocalizationHelper.reloadTranslations();
         }
     }
