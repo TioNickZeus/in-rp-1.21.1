@@ -155,7 +155,13 @@ An auxiliary store (`inrp_dead_players.json` in world folder) that tracks UUIDs 
 | `ChatEventHandler` | `ServerChatEvent`, `CommandEvent` | Proximity local chat routing, silent notification, console logging, chat spy on local & PMs |
 | `LivesEventHandler` | `LivingDeath` (priority `LOWEST`), `PlayerRespawn`, `PlayerLoggedIn`, `TabListNameFormat` | All lives logic, elimination, revive, and `[DEAD]` / `[AFK]` tab tags |
 | `RPGameplayRulesHandler` | `AttackEntity`, `LivingIncomingDamage`, `BlockBreak`, `EntityPlace` | Cancels forbidden actions for RP players, with OP bypass. `AttackEntity` stops melee early (before knockback); `LivingIncomingDamage` closes indirect PvP (arrows, potions, TNT) |
-| `ScoreboardHandler` | `PlayerLoggedIn`, `PlayerRespawn`, `PlayerChangedDimension` | Manages `inrp_active` and `inrp_afk` teams for unified nametag and chat suffixes |
+| `ScoreboardHandler` | `PlayerLoggedIn`, `PlayerRespawn`, `PlayerChangedDimension` | Manages `inrp_active` and `inrp_afk` teams for unified nametag and chat suffixes; owns `refreshPlayerTabList` |
+
+> **Tab list gotcha**: never broadcast `ClientboundPlayerInfoUpdatePacket(UPDATE_DISPLAY_NAME, ...)` by hand to
+> update a tab list tag. NeoForge fires `PlayerEvent.TabListNameFormat` from `ServerPlayer.refreshTabListName()`
+> and caches the result; the packet only serialises that cache, so a manual broadcast re-sends the stale name.
+> Always call `ScoreboardHandler.refreshPlayerTabList`, which delegates to `refreshTabListName()`, and update the
+> player's state **before** calling it, since the tag is derived from that state.
 
 ### 2.5 `util/` — Utilities
 

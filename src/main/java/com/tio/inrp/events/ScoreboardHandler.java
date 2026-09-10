@@ -5,7 +5,6 @@ import com.tio.inrp.data.InRPAttachments;
 import com.tio.inrp.util.LocalizationHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket;
 import net.minecraft.server.ServerScoreboard;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.scores.PlayerTeam;
@@ -60,13 +59,23 @@ public final class ScoreboardHandler {
         refreshPlayerTabList(player);
     }
 
-    /** Re-sends the player's tab list entry so tags such as {@code [DEAD]} and {@code [AFK]} appear immediately. */
+    /**
+     * Recomputes the player's tab list entry so tags such as {@code [DEAD]} and {@code [AFK]} appear immediately.
+     *
+     * <p>Must go through {@link ServerPlayer#refreshTabListName()} rather than broadcasting the packet directly:
+     * NeoForge fires {@link PlayerEvent.TabListNameFormat} from that method and caches the result in
+     * {@code tabListDisplayName}, and the packet only serialises that cached value. Broadcasting the packet on its
+     * own therefore re-sends the <em>previous</em> name, which is why a revived player kept their {@code [DEAD]}
+     * tag until they reconnected. {@code refreshTabListName()} broadcasts the update itself, and only when the
+     * name actually changed.
+     *
+     * <p>Callers must update the player's state before calling this, since the tag is derived from it.
+     */
     public static void refreshPlayerTabList(ServerPlayer player) {
-        if (player == null || player.server == null) {
+        if (player == null) {
             return;
         }
-        player.server.getPlayerList().broadcastAll(new ClientboundPlayerInfoUpdatePacket(
-                ClientboundPlayerInfoUpdatePacket.Action.UPDATE_DISPLAY_NAME, player));
+        player.refreshTabListName();
     }
 
     @SubscribeEvent

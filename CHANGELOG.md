@@ -39,6 +39,12 @@ save-data field was removed, so existing worlds and configs keep working unchang
 - **AFK could re-trigger right after waking up** — waking up did not refresh vanilla's `lastActionTime`, so the
   next inactivity sweep could flag the player again seconds later.
 - **Players stayed stuck AFK** when `afkEnabled` was switched off while they were flagged.
+- **`[DEAD]` and `[AFK]` tab list tags never refreshed** — a revived player kept their `[DEAD]` tag, and an AFK
+  player kept `[AFK]`, until they reconnected. `refreshPlayerTabList` broadcast the tab list packet directly, but
+  that packet only re-serialises the display name NeoForge cached the last time `PlayerEvent.TabListNameFormat`
+  fired, so the tag was never recomputed. It now delegates to `ServerPlayer.refreshTabListName()`, which
+  recomputes the name and broadcasts it itself &mdash; and only when it actually changed, which also removes a
+  packet that used to go out on every login, respawn and dimension change.
 - **Tab list names from other mods were overwritten** — the handler wrote `null` over the display name of every
   player who was neither AFK nor eliminated, clobbering tab list formatting set by any other mod.
 - **State leaked between worlds** — AFK poses, `/afk` and `/g` cooldowns, pending confirmations and the
