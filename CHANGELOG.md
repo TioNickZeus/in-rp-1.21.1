@@ -4,123 +4,67 @@ All notable changes to the In-RP mod will be documented in this file.
 
 ## [1.0.7] - 2026-09-10
 
+Comprehensive hardening pass, exploit mitigations, stability overhauls, and bug fixes across the entire codebase. No command, config key or save-data field was removed, so existing worlds and configurations continue working seamlessly.
+
+### ⚠️ Behaviour Change
+
+- **The roleplay suffix now comes from the config** — `general.nametagSuffix` (default `" [in RP]"`) is now read by the code and drives the scoreboard team suffix, which vanilla renders above the head, in the tab list and in chat. Previously the suffix was hardcoded to the `inrp.chat.suffix` language key, so it always showed `[RP]`. `general.chatSuffix` is kept as a fallback used when `nametagSuffix` is empty — set `nametagSuffix = "[RP]"` to keep the previous look, or `""` to disable the marker entirely.
+
 ### 🔴 Bug Fixes & Stability
 
 - **Server Shutdown Crash & World Lock Fix** — Fixed an `IllegalStateException: Cannot get config value before config is loaded` during `ModConfigEvent.Unloading` on server shutdown when `LocalizationHelper` attempted to read an unloaded config spec. Server shutdown is now completely clean and properly releases the `session.lock` file, preventing worlds from becoming locked, disappearing from the singleplayer world list, or freezing the Java process with an `OverlappingFileLockException`.
 - **Singleplayer/LAN Host Elimination Protection** — When `livesAction = "kick"`, the host player of a Singleplayer/LAN session is now gracefully placed into Spectator mode with an informative message instead of being disconnected, preventing the integrated server from abruptly terminating and disconnecting all friends playing on LAN.
 - **Fluid Bucket Placement Leak Fix** — Fixed a bypass where players in RP mode could place water, lava, and mob buckets when `blockPlaceAllowedInRP = false`. Bucket fluid placement is now intercepted via `RightClickBlock` and `RightClickItem` with an action bar notification, while preserving legitimate container access (opening chests, barrels) and consumable item usage (drinking potions).
-
-### 🧹 Improvements & Tweaks
-
-- **Defensive Config Fallback** — `LocalizationHelper.reloadTranslations` now safely checks `InRPConfig.SPEC.isLoaded()` before querying values, falling back to default `"en_us"` if the configuration is unavailable or in the process of unloading.
-
-## [Unreleased]
-
-Hardening pass over the whole codebase: bug fixes, security fixes and performance work. No command, config key or
-save-data field was removed, so existing worlds and configs keep working unchanged.
-
-### ⚠️ Behaviour Change
-
-- **The roleplay suffix now comes from the config.** `general.nametagSuffix` (default `" [in RP]"`) is finally read
-  by the code and drives the scoreboard team suffix, which vanilla renders above the head, in the tab list and in
-  chat. Previously the suffix was hardcoded to the `inrp.chat.suffix` language key, so it always showed `[RP]`.
-  `general.chatSuffix` is kept as a fallback used when `nametagSuffix` is empty — set `nametagSuffix = "[RP]"` to
-  keep the previous look, or `""` to disable the marker entirely.
-
-### 🔴 Bug Fixes
-
-- **Cancelled deaths were counted** — mods that keep a player alive by cancelling `LivingDeathEvent` (graves,
-  second-chance and keep-alive mods) still cost the player a life, because the lives listener could run before the
-  cancellation. It now runs at `EventPriority.LOWEST` and never sees a cancelled death.
-- **Bulk confirmation could be bypassed** — while one action was pending, the next bulk command ran immediately
-  without asking. `/rpadmin set @a off` followed by `/rpadmin lives set @a 1` executed the second command with no
-  confirmation at all. Every bulk command is now staged on its own.
-- **Staged actions wrote to stale players** — a confirmed action reused the `ServerPlayer` objects captured up to
-  ten seconds earlier, so a target who disconnected in the meantime silently lost the change. Targets are now
-  stored as UUIDs and re-resolved when the action actually runs.
-- **`/rpadmin lives setdeaths` ignored `livesAction`** — it always forced spectator mode, even on servers
-  configured to kick eliminated players.
-- **`pvpAllowedInRP = false` only blocked melee** — arrows, tridents, thrown potions and TNT still hurt (and could
-  still be used by) players in RP mode. Indirect player-versus-player damage is now blocked as well.
-- **`/roll 1d99999999999` broke the command** — the digit run overflowed `Integer.parseInt` and surfaced as a raw
-  exception. Oversized values now report the normal bounds error.
-- **`/rp toggle` from the console did nothing** — it returned silently instead of reporting that the command is
-  players-only.
-- **The idle kick hit non-AFK players** — `afkKickSeconds` was compared against raw idle time, so any value below
-  `afkTimeoutSeconds` disconnected players who had never been marked AFK. Only AFK players can be kicked now.
-- **AFK could re-trigger right after waking up** — waking up did not refresh vanilla's `lastActionTime`, so the
-  next inactivity sweep could flag the player again seconds later.
-- **Players stayed stuck AFK** when `afkEnabled` was switched off while they were flagged.
-- **Entering RP mode destroyed the player's scoreboard team** — vanilla's `addPlayerToTeam` evicts a player from
-  their current team, so on a server that uses teams for rank prefixes (LuckPerms, datapacks, manual
-  `/team join`) the first `/rp on` dropped that membership and `/rp off` left the player on no team at all. The
-  previous team is now recorded in a new `PREVIOUS_TEAM` attachment and restored when the player leaves both the
-  RP and AFK teams. Persisted, so it survives a logout, a death and a restart; if the team was deleted in the
-  meantime, the player is simply left teamless.
-- **`[DEAD]` and `[AFK]` tab list tags never refreshed** — a revived player kept their `[DEAD]` tag, and an AFK
-  player kept `[AFK]`, until they reconnected. `refreshPlayerTabList` broadcast the tab list packet directly, but
-  that packet only re-serialises the display name NeoForge cached the last time `PlayerEvent.TabListNameFormat`
-  fired, so the tag was never recomputed. It now delegates to `ServerPlayer.refreshTabListName()`, which
-  recomputes the name and broadcasts it itself &mdash; and only when it actually changed, which also removes a
-  packet that used to go out on every login, respawn and dimension change.
-- **Tab list names from other mods were overwritten** — the handler wrote `null` over the display name of every
-  player who was neither AFK nor eliminated, clobbering tab list formatting set by any other mod.
-- **State leaked between worlds** — AFK poses, `/afk` and `/g` cooldowns, pending confirmations and the
-  eliminated-player list survived a world unload inside the same JVM (single player, or a server reload) and
-  carried over into the next world.
+- **Cancelled deaths were counted** — Mods that keep a player alive by cancelling `LivingDeathEvent` (graves, second-chance and keep-alive mods) still cost the player a life, because the lives listener could run before the cancellation. It now runs at `EventPriority.LOWEST` and never sees a cancelled death.
+- **Bulk confirmation could be bypassed** — While one action was pending, the next bulk command ran immediately without asking. `/rpadmin set @a off` followed by `/rpadmin lives set @a 1` executed the second command with no confirmation at all. Every bulk command is now staged on its own.
+- **Staged actions wrote to stale players** — A confirmed action reused the `ServerPlayer` objects captured up to ten seconds earlier, so a target who disconnected in the meantime silently lost the change. Targets are now stored as UUIDs and re-resolved when the action actually runs.
+- **`/rpadmin lives setdeaths` ignored `livesAction`** — It always forced spectator mode, even on servers configured to kick eliminated players.
+- **`pvpAllowedInRP = false` only blocked melee** — Arrows, tridents, thrown potions and TNT still hurt (and could still be used by) players in RP mode. Indirect player-versus-player damage is now blocked as well.
+- **`/roll 1d99999999999` broke the command** — The digit run overflowed `Integer.parseInt` and surfaced as a raw exception. Oversized values now report the normal bounds error.
+- **`/rp toggle` from the console did nothing** — It returned silently instead of reporting that the command is players-only.
+- **The idle kick hit non-AFK players** — `afkKickSeconds` was compared against raw idle time, so any value below `afkTimeoutSeconds` disconnected players who had never been marked AFK. Only AFK players can be kicked now.
+- **AFK could re-trigger right after waking up** — Waking up did not refresh vanilla's `lastActionTime`, so the next inactivity sweep could flag the player again seconds later.
+- **Players stayed stuck AFK** — When `afkEnabled` was switched off while they were flagged.
+- **Entering RP mode destroyed the player's scoreboard team** — Vanilla's `addPlayerToTeam` evicts a player from their current team, so on a server that uses teams for rank prefixes (LuckPerms, datapacks, manual `/team join`) the first `/rp on` dropped that membership and `/rp off` left the player on no team at all. The previous team is now recorded in a new `PREVIOUS_TEAM` attachment and restored when the player leaves both the RP and AFK teams. Persisted, so it survives a logout, a death and a restart; if the team was deleted in the meantime, the player is simply left teamless.
+- **`[DEAD]` and `[AFK]` tab list tags never refreshed** — A revived player kept their `[DEAD]` tag, and an AFK player kept `[AFK]`, until they reconnected. `refreshPlayerTabList` broadcast the tab list packet directly, but that packet only re-serialises the display name NeoForge cached the last time `PlayerEvent.TabListNameFormat` fired, so the tag was never recomputed. It now delegates to `ServerPlayer.refreshTabListName()`, which recomputes the name and broadcasts it itself &mdash; and only when it actually changed, which also removes a packet that used to go out on every login, respawn and dimension change.
+- **Tab list names from other mods were overwritten** — The handler wrote `null` over the display name of every player who was neither AFK nor eliminated, clobbering tab list formatting set by any other mod.
+- **State leaked between worlds** — AFK poses, `/afk` and `/g` cooldowns, pending confirmations and the eliminated-player list survived a world unload inside the same JVM (single player, or a server reload) and carried over into the next world.
 - **`/g` and `/global` were two independent registrations** that could drift apart; `/g` is now a true alias.
 
 ### 🔒 Security
 
-- **Path traversal in `serverLanguage`** — the value was interpolated straight into a classpath resource path. It
-  is now validated against `[a-z0-9_-]{2,32}` and falls back to `en_us` when it does not match.
-- **Chat spy survived a de-op** — the toggle lives in player save data, so a player who lost operator status kept
-  receiving local chat and private message copies. The permission level is re-checked at delivery time.
-- **Length caps** — chat and `/g` messages are capped at 256 characters (vanilla's own limit, which a modified
-  client can exceed) and roleplay suffixes at 64, so neither can bloat outgoing packets.
-- **CI hardening** — the Gradle wrapper JAR is validated against known-good releases, and the workflow now runs
-  with read-only repository permissions.
+- **Path traversal in `serverLanguage`** — The value was interpolated straight into a classpath resource path. It is now validated against `[a-z0-9_-]{2,32}` and falls back to `en_us` when it does not match.
+- **Chat spy survived a de-op** — The toggle lives in player save data, so a player who lost operator status kept receiving local chat and private message copies. The permission level is re-checked at delivery time.
+- **Length caps** — Chat and `/g` messages are capped at 256 characters (vanilla's own limit, which a modified client can exceed) and roleplay suffixes at 64, so neither can bloat outgoing packets.
+- **CI hardening** — The Gradle wrapper JAR is validated against known-good releases, and the workflow now runs with read-only repository permissions.
 
 ### ⚡ Performance
 
-- **Scoreboard suffixes are no longer rewritten constantly** — every login, respawn, dimension change and AFK
-  toggle rewrote both team suffixes, and each write broadcasts a team update packet to every connected client. The
-  value is now written only when the rendered text actually changed.
-- **Local chat delivers in a single pass** — recipients and out-of-range staff were resolved in two passes with a
-  `HashSet` allocated per message. It is now one pass with no allocation, and the spy component is built only when
-  somebody is actually watching.
+- **Scoreboard suffixes are no longer rewritten constantly** — Every login, respawn, dimension change and AFK toggle rewrote both team suffixes, and each write broadcasts a team update packet to every connected client. The value is now written only when the rendered text actually changed.
+- **Local chat delivers in a single pass** — Recipients and out-of-range staff were resolved in two passes with a `HashSet` allocated per message. It is now one pass with no allocation, and the spy component is built only when somebody is actually watching.
 - **Bulk revive writes once** — `/rpadmin lives revive` used to rewrite `inrp_dead_players.json` once per target.
-- **Redundant disk writes skipped** — marking or unmarking an already-correct player no longer touches the file.
-- **Read-only attachment lookups no longer allocate** — reading a flag used to materialise its default value into
-  the player's attachment map, which matters for the AFK guard that runs on every player tick.
+- **Redundant disk writes skipped** — Marking or unmarking an already-correct player no longer touches the file.
+- **Read-only attachment lookups no longer allocate** — Reading a flag used to materialise its default value into the player's attachment map, which matters for the AFK guard that runs on every player tick.
 - **Teams are created lazily**, so a server that never uses RP or AFK keeps a clean scoreboard.
-- Duplicate tab list packet broadcasts removed, and `ThreadLocalRandom.current()` hoisted out of the dice loop.
+- **Duplicate tab list packet broadcasts removed**, and `ThreadLocalRandom.current()` hoisted out of the dice loop.
 
-### 🧹 Code Quality
+### 🧹 Code Quality & Tweaks
 
-- **Monotonic timings** — cooldowns, the confirmation TTL and the AFK grace period use `Util.getMillis()` instead
-  of wall-clock `System.currentTimeMillis()`, so a clock correction cannot skew them.
-- **Thread-safe translations** — `LocalizationHelper` swaps immutable maps atomically instead of clearing and
-  repopulating a `HashMap` that the server thread reads concurrently, and no longer touches the config during
-  class initialization.
-- **Correct file I/O** — `InRPLivesManager` uses `java.nio.file` with explicit UTF-8 instead of platform-default
-  `FileReader`/`FileWriter`.
-- **Deduplication** — the four near-identical `/rpadmin config` handlers collapsed into one parameterised path,
-  and the new `ChatFormat` and `HelpText` utilities are shared by every chat channel and help listing.
-- **Complete localization** — `[L]`, `[G]`, `[SPY:L]` and `[SPY:PM]` moved into the language files (they were the
-  last hardcoded player-facing strings), as did the `ON`/`OFF` text inside confirmation prompts.
-- **Conventions** — static-only classes are `final` with private constructors, inline fully-qualified references
-  replaced with imports, magic numbers named, and Javadoc added across the codebase explaining *why* each
-  non-obvious decision was made.
-- **Build** — `-Xlint` enabled, `options.release = 21` pinned, JAR manifest metadata added, archives made
-  reproducible, MDK placeholder blocks removed, and the author declared once in `gradle.properties`.
-- **CI** — superseded runs are cancelled and the built JAR is uploaded as a workflow artifact.
-- **Dead code removed** — unused language keys and `ConfirmationManager.hasPending`.
+- **Defensive Config Fallback** — `LocalizationHelper.reloadTranslations` safely checks `InRPConfig.SPEC.isLoaded()` before querying values, falling back to default `"en_us"` if the configuration is unavailable or in the process of unloading.
+- **Monotonic timings** — Cooldowns, the confirmation TTL and the AFK grace period use `Util.getMillis()` instead of wall-clock `System.currentTimeMillis()`, so a clock correction cannot skew them.
+- **Thread-safe translations** — `LocalizationHelper` swaps immutable maps atomically instead of clearing and repopulating a `HashMap` that the server thread reads concurrently, and no longer touches the config during class initialization.
+- **Correct file I/O** — `InRPLivesManager` uses `java.nio.file` with explicit UTF-8 instead of platform-default `FileReader`/`FileWriter`.
+- **Deduplication** — The four near-identical `/rpadmin config` handlers collapsed into one parameterised path, and the new `ChatFormat` and `HelpText` utilities are shared by every chat channel and help listing.
+- **Complete localization** — `[L]`, `[G]`, `[SPY:L]` and `[SPY:PM]` moved into the language files (they were the last hardcoded player-facing strings), as did the `ON`/`OFF` text inside confirmation prompts.
+- **Conventions** — Static-only classes are `final` with private constructors, inline fully-qualified references replaced with imports, magic numbers named, and Javadoc added across the codebase explaining *why* each non-obvious decision was made.
+- **Build** — `-Xlint` enabled, `options.release = 21` pinned, JAR manifest metadata added, archives made reproducible, MDK placeholder blocks removed, and the author declared once in `gradle.properties`.
+- **CI** — Superseded runs are cancelled and the built JAR is uploaded as a workflow artifact.
+- **Dead code removed** — Unused language keys and `ConfirmationManager.hasPending`.
 
 ### 🗂️ New Files
 
-- **`ChatFormat.java`** (`util/`) — shared sanitisation and layout for every In-RP chat channel.
-- **`HelpText.java`** (`util/`) — builds the `/rp help` and `/rpadmin help` listings from key/colour pairs.
+- **`ChatFormat.java`** (`util/`) — Shared sanitisation and layout for every In-RP chat channel.
+- **`HelpText.java`** (`util/`) — Builds the `/rp help` and `/rpadmin help` listings from key/colour pairs.
 
 ## [1.0.6] - 2026-09-10
 
