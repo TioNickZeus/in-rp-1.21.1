@@ -8,10 +8,16 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.BucketItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.material.Fluids;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.common.util.TriState;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
+import net.neoforged.neoforge.fluids.FluidUtil;
 
 /**
  * Enforces the roleplay rules configured under {@code [rules]}.
@@ -90,6 +96,50 @@ public final class RPGameplayRulesHandler {
             event.setCanceled(true);
             notifyBlocked(player, "inrp.rule.block_place_disabled");
         }
+    }
+
+    /**
+     * Suppresses fluid bucket item usage when clicking blocks, while allowing normal block interactions
+     * (such as opening chests, doors, or barrels) to proceed unhindered.
+     */
+    @SubscribeEvent
+    public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
+        if (InRPConfig.BLOCK_PLACE_ALLOWED_IN_RP.get()) {
+            return;
+        }
+        if (event.getEntity() instanceof ServerPlayer player && isRestricted(player)) {
+            if (isFluidPlacementItem(event.getItemStack())) {
+                event.setUseItem(TriState.FALSE);
+            }
+        }
+    }
+
+    /**
+     * Blocks fluid placement from buckets (water, lava, mob buckets) when block placement is restricted.
+     */
+    @SubscribeEvent
+    public static void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
+        if (InRPConfig.BLOCK_PLACE_ALLOWED_IN_RP.get()) {
+            return;
+        }
+        if (event.getEntity() instanceof ServerPlayer player && isRestricted(player)) {
+            if (isFluidPlacementItem(event.getItemStack())) {
+                event.setCanceled(true);
+                event.setCancellationResult(net.minecraft.world.InteractionResult.FAIL);
+                notifyBlocked(player, "inrp.rule.block_place_disabled");
+            }
+        }
+    }
+
+    /** @return whether the item stack can place fluids into the world (e.g. water or lava buckets). */
+    private static boolean isFluidPlacementItem(ItemStack stack) {
+        if (stack.isEmpty()) {
+            return false;
+        }
+        if (stack.getItem() instanceof BucketItem bucket) {
+            return bucket.content != Fluids.EMPTY;
+        }
+        return FluidUtil.getFluidContained(stack).map(fs -> !fs.isEmpty()).orElse(false);
     }
 
     /** @return whether the rule applies: the player is in RP mode and is not an exempt operator. */
