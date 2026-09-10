@@ -53,6 +53,14 @@ public class InRPAttachments {
                     .build()
     );
 
+    public static final Supplier<AttachmentType<Boolean>> IS_CHAT_SPY = ATTACHMENT_TYPES.register(
+            "is_chat_spy",
+            () -> AttachmentType.builder(() -> false)
+                    .serialize(Codec.BOOL)
+                    .copyOnDeath()
+                    .build()
+    );
+
     // RP Mode
     public static boolean isInRP(Player player) {
         if (player == null) return false;
@@ -121,5 +129,16 @@ public class InRPAttachments {
     public static void setAFK(Player player, boolean afk) {
         if (player == null) return;
         player.setData(IS_AFK, afk);
+    }
+
+    // Chat Spy Mode
+    public static boolean isChatSpy(Player player) {
+        if (player == null) return false;
+        return Boolean.TRUE.equals(player.getData(IS_CHAT_SPY));
+    }
+
+    public static void setChatSpy(Player player, boolean spy) {
+        if (player == null) return;
+        player.setData(IS_CHAT_SPY, spy);
     }
 }

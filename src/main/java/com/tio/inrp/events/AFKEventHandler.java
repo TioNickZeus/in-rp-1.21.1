@@ -130,7 +130,7 @@ public class AFKEventHandler {
         }
     }
 
-    @SubscribeEvent
+    @SubscribeEvent(receiveCanceled = true)
     public static void onServerChat(ServerChatEvent event) {
         ServerPlayer player = event.getPlayer();
         if (player != null && InRPAttachments.isAFK(player)) {

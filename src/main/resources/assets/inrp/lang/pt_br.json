@@ -91,5 +91,13 @@
   "inrp.admin.help.lives_setdeaths": "/rpadmin lives setdeaths <alvos> <quantidade> - Definir mortes",
   "inrp.admin.help.lives_action": "/rpadmin lives action <spectator|kick> - Definir ação de eliminação",
   "inrp.admin.help.lives_applydefault": "/rpadmin lives applydefault [alvos] - Aplicar vidas padrão",
-  "inrp.admin.help.confirm": "/rpadmin confirm - Confirmar uma ação em massa pendente"
+  "inrp.admin.help.confirm": "/rpadmin confirm - Confirmar uma ação em massa pendente",
+  "inrp.admin.help.spy": "/rpadmin spy - Alternar espionagem de chat para staff",
+
+  "inrp.chat.local.no_one_heard": "(Ninguém por perto ouviu você)",
+  "inrp.chat.global.cooldown": "Aguarde %s segundo(s) antes de usar o chat global novamente.",
+  "inrp.chat.global.empty": "Você deve digitar uma mensagem para enviar no chat global.",
+  "inrp.chat.spy.enabled": "Chat Spy ativado.",
+  "inrp.chat.spy.disabled": "Chat Spy desativado.",
+  "inrp.help.global": "/g <mensagem> - Enviar mensagem no chat global"
 }

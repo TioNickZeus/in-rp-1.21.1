@@ -2,6 +2,40 @@
 
 All notable changes to the In-RP mod will be documented in this file.
 
+## [1.0.6] - 2026-09-10
+
+### ✨ New Features
+
+- **Proximity Local Chat (`[L]`)**:
+  - Regular chat messages sent via standard key (`T`) are now delivered locally based on proximity (`localChatRadius`, default: 40 blocks).
+  - Safe 100% server-side delivery via `player.sendSystemMessage(...)`, eliminating any client-side cryptographic chat signing/reporting errors on vanilla clients.
+  - Subtle feedback notification if no one is nearby: `(Nobody nearby heard you)`.
+  - Console logging preserved for server audit logs and bot integrations.
+- **Global Server Chat (`/g` and `/global`)**:
+  - Allows players to broadcast messages server-wide with the `[G]` prefix.
+  - Configurable anti-spam cooldown (`globalChatCooldownSeconds`, default: 3s).
+  - Automatically wakes up AFK players upon message transmission.
+- **Staff Chat Spy (`/rpadmin spy` and `/chatspy`)**:
+  - Toggle command for administrators (OP level 2+) to monitor server communications in real time.
+  - State persists across deaths and disconnects via `IS_CHAT_SPY` data attachment.
+  - Monitors out-of-range local chat with `[SPY:L]` tag.
+  - Monitors private vanilla messages (`/tell`, `/msg`, `/w`) with `[SPY:PM]` tag (configurable toggle in TOML, disabled by default for player privacy).
+
+### 🔴 Bug Fixes
+
+- **Missing `/afk` in `/rp help`** — Resolved missing display entry for `/afk` in the player `/rp help` listing within `RPCommand.java`.
+
+### 🗂️ New Files
+
+- **`GlobalChatCommand.java`** (`commands/`) — Handles `/g` and `/global` registration, greedy string parsing, and per-UUID cooldowns.
+- **`ChatSpyCommand.java`** (`commands/`) — Handles `/chatspy` shortcut toggle and permissions for staff.
+
+### 🧹 Improvements & Tweaks
+
+- **Event Handler Utilization** — Re-activated and expanded `ChatEventHandler.java` (`events/`) to handle both `ServerChatEvent` (local chat routing) and `CommandEvent` (chat spy interception).
+- **AFK Wake-Up Resilience** — Configured `receiveCanceled = true` on `AFKEventHandler.onServerChat` to guarantee that chatting always wakes up an AFK player even when local chat cancels the default vanilla broadcast.
+- **Updated Help Listings** — Added `/g` to `/rp help` and `/rpadmin spy` to `/rpadmin help`.
+
 ## [1.0.5] - 2026-09-06
 
 ### ✨ New Features

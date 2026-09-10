@@ -2,7 +2,7 @@
 
 > **Single Source of Truth (SSOT)** for the mod's technical architecture and design decisions.
 > Every AI, contributor, or maintainer must read this document before modifying any code.
-> **Last updated**: September 2026 — version 1.0.5
+> **Last updated**: September 2026 — version 1.0.6
 
 ---
 
@@ -41,7 +41,9 @@ com.tio.inrp/
 │   ├── AFKCommand.java          ← /afk (toggle, voluntary broadcast, anti-spam)
 │   ├── RollCommand.java         ← /roll [NdS|N]
 │   ├── LivesCommand.java        ← /lives [player]
-│   └── RPAdminCommand.java      ← /rpadmin (set|config|lives|confirm|help)
+│   ├── GlobalChatCommand.java   ← /g, /global [message] (broadcast with cooldown)
+│   ├── ChatSpyCommand.java      ← /chatspy (staff toggle)
+│   └── RPAdminCommand.java      ← /rpadmin (set|config|lives|spy|confirm|help)
 ├── config/
 │   └── InRPConfig.java          ← ModConfigSpec with all TOML options
 ├── data/
@@ -49,6 +51,7 @@ com.tio.inrp/
 │   └── InRPLivesManager.java   ← External JSON store for dead players
 ├── events/
 │   ├── AFKEventHandler.java     ← Inactivity detection, instant wake-up, optional kick
+│   ├── ChatEventHandler.java    ← Proximity local chat routing and chat spy
 │   ├── LivesEventHandler.java   ← Death cycle, respawn, login, tab list ([DEAD] and [AFK])
 │   ├── RPGameplayRulesHandler.java ← PvP, block break/place restrictions
 │   └── ScoreboardHandler.java   ← Teams `inrp_active` & `inrp_afk`, unified nametag & chat suffixes
@@ -71,13 +74,15 @@ All commands are registered in `InRP.onRegisterCommands` via `RegisterCommandsEv
 | `AFKCommand` | `/afk` | None | Toggle AFK status, global broadcast, 3s anti-spam |
 | `RollCommand` | `/roll` | None | Dice with proximity broadcast |
 | `LivesCommand` | `/lives` | None | Query lives (self or target) |
-| `RPAdminCommand` | `/rpadmin` | OP 2+ | Full administration |
+| `GlobalChatCommand` | `/g`, `/global` | None | Global server chat with cooldown |
+| `ChatSpyCommand` | `/chatspy` | OP 2+ | Toggle chat spy monitoring |
+| `RPAdminCommand` | `/rpadmin` | OP 2+ | Full administration (including `/rpadmin spy`) |
 
-`RPAdminCommand` groups subcommands: `set`, `config`, `lives` (set/revive/setdeaths/action/applydefault), `confirm`, and `help`.
+`RPAdminCommand` groups subcommands: `set`, `config`, `lives` (set/revive/setdeaths/action/applydefault), `spy`, `confirm`, and `help`.
 
 ### 2.2 `config/` — Configuration
 
-`InRPConfig` uses `ModConfigSpec.Builder` with TOML sections (`general`, `rules`, `roll`, `lives`, `afk`). Registered as `ModConfig.Type.SERVER`.
+`InRPConfig` uses `ModConfigSpec.Builder` with TOML sections (`general`, `rules`, `roll`, `lives`, `afk`, `chat`). Registered as `ModConfig.Type.SERVER`.
 
 | Section | Key | Type | Default | Validation |
 |:---|:---|:---|:---|:---|
@@ -97,6 +102,11 @@ All commands are registered in `InRP.onRegisterCommands` via `RegisterCommandsEv
 | afk | `afkTimeoutSeconds` | int | `300` | `[10, 86400]` |
 | afk | `afkKickSeconds` | int | `-1` | `[-1, 86400]` |
 | afk | `autoDisableRPOnAFK` | bool | `true` | N/A |
+| chat | `localChatEnabled` | bool | `true` | N/A |
+| chat | `localChatRadius` | double | `40.0` | `[5.0, 500.0]` |
+| chat | `globalChatCooldownSeconds` | int | `3` | `[0, 300]` |
+| chat | `spyLocalChat` | bool | `true` | N/A |
+| chat | `spyPrivateMessages` | bool | `false` | N/A |
 
 **Reload**: when config is (re)loaded, `InRP.onConfigLoad` calls `LocalizationHelper.reloadTranslations()`.
 
@@ -110,6 +120,7 @@ NeoForge Data Attachments is the primary player state persistence mechanism. Dat
 |:---|:---|:---|:---|
 | `IN_RP` | `Boolean` | `false` | Player is in RP mode |
 | `IS_AFK` | `Boolean` | `false` | Player is marked as AFK |
+| `IS_CHAT_SPY` | `Boolean` | `false` | Staff chat spy monitoring active |
 | `DEATH_COUNT` | `Integer` | `0` | Accumulated death counter |
 | `MAX_LIVES` | `Integer` | `-1` | Lives limit (-1 = unlimited) |
 | `IS_DEAD` | `Boolean` | `false` | Player permanently dead |
@@ -127,6 +138,7 @@ An auxiliary store (`inrp_dead_players.json` in world folder) that tracks UUIDs 
 | Class | Events | Responsibility |
 |:---|:---|:---|
 | `AFKEventHandler` | `ServerTickEvent.Post`, `PlayerTickEvent.Post`, `ServerChatEvent`, `PlayerLoggedIn`, `PlayerLoggedOut` | Inactivity timer (100-tick interval), instant wake-up, optional kick |
+| `ChatEventHandler` | `ServerChatEvent`, `CommandEvent` | Proximity local chat routing, silent notification, console logging, chat spy on local & PMs |
 | `LivesEventHandler` | `LivingDeath`, `PlayerRespawn`, `PlayerLoggedIn`, `TabListNameFormat` | All lives logic, elimination, revive, and `[DEAD]` / `[AFK]` tab tags |
 | `RPGameplayRulesHandler` | `AttackEntity`, `BlockBreak`, `EntityPlace` | Cancels forbidden actions for RP players, with OP bypass |
 | `ScoreboardHandler` | `PlayerLoggedIn`, `PlayerRespawn`, `PlayerChangedDimension` | Manages `inrp_active` and `inrp_afk` teams for unified nametag and chat suffixes |

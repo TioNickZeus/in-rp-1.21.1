@@ -109,6 +109,8 @@ public class RPAdminCommand {
                 )
                 .then(Commands.literal("confirm")
                         .executes(context -> executeConfirm(context.getSource())))
+                .then(Commands.literal("spy")
+                        .executes(context -> ChatSpyCommand.toggleSpy(context.getSource())))
                 .then(Commands.literal("help")
                         .executes(context -> showAdminHelp(context.getSource())))
         );
@@ -449,7 +451,9 @@ public class RPAdminCommand {
                 .append(Component.literal("\n"))
                 .append(LocalizationHelper.getMessage("inrp.admin.help.lives_applydefault").withStyle(ChatFormatting.GRAY))
                 .append(Component.literal("\n"))
-                .append(LocalizationHelper.getMessage("inrp.admin.help.confirm").withStyle(ChatFormatting.GRAY));
+                .append(LocalizationHelper.getMessage("inrp.admin.help.confirm").withStyle(ChatFormatting.GRAY))
+                .append(Component.literal("\n"))
+                .append(LocalizationHelper.getMessage("inrp.admin.help.spy").withStyle(ChatFormatting.GRAY));
         source.sendSuccess(() -> help, false);
         return 1;
     }

@@ -90,7 +90,11 @@ public class RPCommand {
                 .append(Component.literal("\n"))
                 .append(LocalizationHelper.getMessage("inrp.help.roll").withStyle(ChatFormatting.YELLOW))
                 .append(Component.literal("\n"))
-                .append(LocalizationHelper.getMessage("inrp.help.lives").withStyle(ChatFormatting.YELLOW));
+                .append(LocalizationHelper.getMessage("inrp.help.lives").withStyle(ChatFormatting.YELLOW))
+                .append(Component.literal("\n"))
+                .append(LocalizationHelper.getMessage("inrp.help.afk").withStyle(ChatFormatting.YELLOW))
+                .append(Component.literal("\n"))
+                .append(LocalizationHelper.getMessage("inrp.help.global").withStyle(ChatFormatting.YELLOW));
         source.sendSuccess(() -> help, false);
         return 1;
     }

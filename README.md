@@ -14,6 +14,11 @@ A lightweight, server-friendly **Roleplay (RP) Switch & Utility Mod** for **Mine
   - Distinct visual markers: `[AFK]` tag on the Tab list and ` [AFK]` suffix on overhead nametag.
   - Instant wake-up upon movement, camera rotation, or typing in chat.
   - Optional configurable idle kick.
+- **Proximity Local Chat & Global Chat (`/g`)**:
+  - Regular chat messages are routed locally by proximity with configurable radius (e.g. 40 blocks).
+  - Subtle feedback when nobody is around to hear you: `(Nobody nearby heard you)`.
+  - `/g <message>` or `/global <message>` to broadcast server-wide with anti-spam cooldown.
+  - Chat Spy (`/rpadmin spy` / `/chatspy`) for staff to monitor out-of-range local chat and private messages (`/tell`, `/msg`, `/w`).
 - **Dynamic Overhead & Chat Identifiers**:
   - Displays a unified roleplay suffix (e.g., `Player [RP]`) both above the player's head and in chat via native Minecraft Scoreboard Teams without duplication.
 - **Modular Dice Roller (`/roll`)**:
@@ -50,8 +55,9 @@ A lightweight, server-friendly **Roleplay (RP) Switch & Utility Mod** for **Mine
 | `/rp on` | Everyone | Enters Roleplay mode (activates nametag & chat tags). |
 | `/rp off` | Everyone | Exits Roleplay mode. |
 | `/rp toggle` | Everyone | Toggles between In-RP and Off-RP. |
-| `/rp help` | Everyone | Shows a list of all player commands. |
+| `/rp help` | Everyone | Shows a list of player commands (`/rp`, `/afk`, `/g`, `/roll`, `/lives`). |
 | `/afk` | Everyone | Toggles AFK (away from keyboard) status with 3s anti-spam cooldown. |
+| `/g <message>` | Everyone | Sends a message to global server chat (with anti-spam cooldown). |
 | `/roll` | Everyone | Rolls a default 20-sided die (1-20). |
 | `/roll <sides>` | Everyone | Rolls a die with a specified number of sides (e.g. `/roll 100`). |
 | `/roll <dice>` | Everyone | Rolls dice using RPG notation (e.g. `/roll 2d6`, `/roll 3d20`). |
@@ -73,6 +79,8 @@ A lightweight, server-friendly **Roleplay (RP) Switch & Utility Mod** for **Mine
 | `/rpadmin lives action <spectator\|kick>` | OP (Level 2) | Sets elimination action when lives run out (spectator or kick). |
 | `/rpadmin lives applydefault [targets]` | OP (Level 2) | Applies current default max lives to all online (or specified) players. |
 | `/rpadmin confirm` | OP (Level 2) | Confirms a pending bulk action (required when affecting 5+ players). |
+| `/rpadmin spy` | OP (Level 2) | Toggles Chat Spy mode to monitor out-of-range local chat and PMs. |
+| `/chatspy` | OP (Level 2) | Quick shortcut to toggle Chat Spy mode. |
 | `/rpadmin help` | OP (Level 2) | Shows a list of all admin commands. |
 
 ---
@@ -136,6 +144,24 @@ The server configuration file is generated automatically at `config/inrp-server.
 
     # If true, entering AFK mode automatically disables RP mode
     autoDisableRPOnAFK = true
+
+[chat]
+    # Whether standard chat is converted into proximity local chat
+    localChatEnabled = true
+
+    # Proximity radius in blocks for local chat
+    # Range: 5.0 ~ 500.0
+    localChatRadius = 40.0
+
+    # Cooldown in seconds between messages in /g or /global (0 to disable)
+    # Range: 0 ~ 300
+    globalChatCooldownSeconds = 3
+
+    # Whether staff with Chat Spy active receive out-of-range local chat
+    spyLocalChat = true
+
+    # Whether staff with Chat Spy active receive copies of private messages (/tell, /msg, /w)
+    spyPrivateMessages = false
 ```
 
 ---
@@ -144,11 +170,11 @@ The server configuration file is generated automatically at `config/inrp-server.
 
 ### Dedicated Server
 1. Ensure your server is running **NeoForge 1.21.1** (NeoForge 21.1.249 or newer).
-2. Place the compiled `inrp-1.0.5.jar` into the server's `mods/` directory.
+2. Place the compiled `inrp-1.0.6.jar` into the server's `mods/` directory.
 3. Start the server. Players with pure **Vanilla Minecraft 1.21.1** clients can connect immediately!
 
 ### Singleplayer / Client
-1. Place the `inrp-1.0.5.jar` in your `.minecraft/mods/` directory.
+1. Place the `inrp-1.0.6.jar` in your `.minecraft/mods/` directory.
 2. Launch Minecraft using the NeoForge 1.21.1 profile.
 
 ---
@@ -192,4 +218,5 @@ The resulting JAR file will be located in `build/libs/`.
 - **Author**: **TioNickZeus**
 - **License**: [Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)](LICENSE)
   - You are free to share, copy, modify, and adapt this mod for personal and community servers.
-  - **Non-Commercial**: You may not sell this mod or distribute it behind paid paywalls.
+  - **Non-Commercial**: You may not sell this mod or distribute it behind paid paywalls..
+

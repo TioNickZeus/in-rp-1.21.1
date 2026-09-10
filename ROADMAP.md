@@ -1,82 +1,80 @@
-# 🗺️ Roadmap & Ideias Futuras — In-RP
+# 🗺️ Roadmap & Future Ideas — In-RP
 
-Este documento serve como um painel central para registrar ideias, sugestões, melhorias de qualidade de vida e funcionalidades planejadas para as próximas versões do **In-RP**.
-
----
-
-## 📌 Próxima Versão (Backlog Imediato)
-
-- [ ] **Incluir `/afk` no `/rp help`**: Adicionar a linha de exibição de `inrp.help.afk` no método `showHelp` de [RPCommand.java](file:///c:/Users/Rian/Documents/GitHub/in-rp-1.21.1/src/main/java/com/tio/inrp/commands/RPCommand.java) (as chaves de tradução já estão prontas em `en_us.json` e `pt_br.json`).
-- [ ] **Sincronização de Tab List após Reviver**: Acompanhar atualizações da API do NeoForge para contornar a retenção de cache do cliente vanilla sem exigir reconexão.
+This document serves as a central board to track ideas, suggestions, quality-of-life improvements, and planned features for upcoming versions of **In-RP**.
 
 ---
 
-## 💬 Chat Local & Global (Próxima Grande Funcionalidade)
+## 📌 Immediate Backlog
 
-- [ ] **Chat Local por Padrão (Proximidade)**:
-  - O chat padrão do jogo (apenas apertar `T` e enviar mensagem) passa a ser **local por proximidade** (com raio configurável no TOML, ex: 30 a 50 blocos).
-  - Apenas jogadores dentro do raio recebem a mensagem no chat (ex: `[L] Player: mensagem`).
-  - Notificação sutil caso nenhum jogador esteja por perto: `(Ninguém por perto ouviu você)` (igual à mecânica já existente no `/roll`).
-  - Toggles e opções na config: `localChatEnabled`, `localChatRadius`.
-- [ ] **`/g <mensagem>` (ou `/global`)**: Chat global do servidor para quando o chat local estiver ativo por padrão. Permite falar com todos os jogadores do servidor (com prefixo `[G]` e *cooldown* configurável para evitar *flood*).
-- [ ] **Chat Spy para Moderação (`/rpadmin spy` ou `/chatspy`)**:
-  - Ferramenta dedicada para a administração e moderação monitorar canais em tempo real.
-  - Comando *toggle* por admin (com permissão OP nível 2 ou nó de permissão correspondente).
-  - Permite espiar:
-    - Mensagens do chat local fora do alcance do administrador (com prefixo discreto, ex: `[SPY:Local]`).
-    - Mensagens privadas do vanilla (`/tell`, `/msg`, `/w`) entre jogadores para coibir metagaming e abusos (ex: `[SPY:PM] JogadorA -> JogadorB: texto`).
-    - Sussurros de proximidade ultra-curtos (`/sussurro`).
-  - Configurações dedicadas no TOML para a staff controlar o que pode ser espiado (`spyLocalChat = true`, `spyPrivateMessages = true`).
+- [x] **Include `/afk` in `/rp help`**: Added display entry for `inrp.help.afk` in the `showHelp` method of [RPCommand.java](file:///c:/Users/Rian/Documents/GitHub/in-rp-1.21.1/src/main/java/com/tio/inrp/commands/RPCommand.java) (bundled with `en_us.json` and `pt_br.json`).
+- [ ] **Tab List Synchronization after Revive**: Monitor NeoForge API updates to work around vanilla client cache retention without requiring a reconnect.
 
 ---
 
-## 💡 Ideias de Mecânicas de Roleplay (Gameplay)
+## 💬 Local & Global Chat
 
-### 1. Comandos de Expressão
-- [ ] **`/off <mensagem>` (ou `/b`)**: Permite falar fora do personagem (Out-Of-Character / OOC) mesmo com o RP ligado. A mensagem é exibida com tag destacada e cor neutra (ex: `(( [OFF] Player: mensagem ))` em cinza), ideal para avisos rápidos entre jogadores sem precisar desativar e reativar o `/rp`.
-- [ ] **`/do <descrição>`**: Narração de acontecimentos do ambiente ou de cena em terceira pessoa (ex: `[CENA] O cavalo parece estar muito cansado após a longa viagem.`).
-- [ ] **`/sussurro <mensagem>`**: Fala em voz baixa com raio de proximidade ultra-curto (ex: 3 a 5 blocos) para conversas sigilosas entre personagens próximos (diferente do `/msg`/`/tell` vanilla que é privado e global).
-
-### 2. Sistema de Identidade e Personagem
-- [ ] **Nome de Personagem (RP Name)**: Permitir definir um nome fictício para o personagem (ex: `/rp nome <Nome Sobrenome>`), substituindo ou complementando o nick do Minecraft no chat e nametag.
-- [ ] **Ficha Rápida (`/rp perfil [player]`)**: Exibição em mensagem formatada ou livro/baú de dados básicos do personagem: idade, ocupação/profissão, biografia curta e status.
-- [ ] **Status de Humor/Estado**: Pequeno texto de estado do personagem (ex: `Ferido`, `Ocupado`, `Viajando`).
-
-### 3. Vidas e Sobrevivência
-- [ ] **Transferência de Vidas (`/lives transfer <player> [quantia]`)**: Permitir que jogadores doem ou compartilhem vidas entre si (ideal para mecânicas de sacrifício, cura ritualística ou clãs).
-- [ ] **Efeito Sonoro/Visual ao Perder Vida**: Efeito dramático de som e partículas para alertar jogadores próximos quando alguém perde uma de suas vidas limitadas.
-- [ ] **Itens de Reviver**: Suporte a um item consumível customizado (ou totem/coração) que reviva um jogador eliminado caso seja usado por outro jogador.
-
----
-
-## 🛡️ Administração e Moderação
-
-- [ ] **Auditoria de Logs (`inrp_audit.log`)**: Registro de ações administrativas críticas (revives, alterações de vidas, resets) em arquivo de log separado para fácil monitoramento de staff.
-- [ ] **Integração com LuckPerms / Permissões NeoForge**: Nós de permissão detalhados (`inrp.command.roll`, `inrp.command.lives`, `inrp.admin.*`) além do padrão OP nível 2 vanilla.
-- [ ] **Comando `/rpadmin inspect <player>`**: Painel completo para administradores verem tudo sobre o jogador em um único clique (status RP, AFK, vidas, mortes, coordenadas atuais).
+- [x] **Default Local Chat (Proximity)**:
+  - Standard in-game chat (pressing `T` and sending a message) is delivered locally based on proximity (configurable radius in TOML, default: 40 blocks).
+  - Only players within the radius receive the chat message (e.g. `[L] Player: message`).
+  - Subtle feedback notification when nobody is around: `(Nobody nearby heard you)`.
+  - Config toggles and options: `localChatEnabled`, `localChatRadius`.
+- [x] **`/g <message>` (or `/global`)**: Global server chat when local chat is enabled by default. Broadcasts to all server players with `[G]` prefix and configurable anti-flood cooldown.
+- [x] **Moderation Chat Spy (`/rpadmin spy` or `/chatspy`)**:
+  - Dedicated tool for staff and administration to monitor channels in real time.
+  - Toggle command per admin (OP level 2+ permission).
+  - Monitors:
+    - Local chat messages outside admin proximity range (with discrete tag `[SPY:L]`).
+    - Vanilla private messages (`/tell`, `/msg`, `/w`) between players to deter metagaming and rule-breaking (`[SPY:PM] PlayerA -> PlayerB: text`).
+  - Dedicated TOML configurations for staff control (`spyLocalChat = true`, `spyPrivateMessages = true`).
 
 ---
 
-## 🚀 Visão Futura: Ecossistema "In-RP Companion / Addon"
+## 💡 Roleplay Mechanics Ideas (Gameplay)
 
-> **Fase de Planejamento:** A ser desenvolvido **apenas após** o mod principal (`In-RP Core`) estar maduro, completo e estável.
+### 1. Expression Commands
+- [ ] **`/off <message>` (or `/b`)**: Speak Out-Of-Character (OOC) while remaining in RP mode. The message displays with a distinct neutral tag (e.g. `(( [OFF] Player: message ))` in gray), ideal for quick player notes without having to toggle `/rp`.
+- [ ] **`/do <description>`**: Third-person narration of scene or environment events (e.g. `[SCENE] The horse appears exhausted after the long journey.`).
+- [ ] **`/sussurro <message>` (Whisper)**: Low-voice speech with an ultra-short proximity radius (e.g. 3 to 5 blocks) for secretive nearby conversations (unlike vanilla `/msg`/`/tell` which is global and private).
 
-A ideia deste projeto futuro é expandir as fronteiras do RPG quando o servidor e os jogadores optarem por uma experiência modded completa:
+### 2. Character & Identity System
+- [ ] **Character Name (RP Name)**: Allow setting a fictional character name (e.g. `/rp name <Firstname Lastname>`), replacing or complementing the Minecraft username in chat and overhead nametag.
+- [ ] **Quick Profile (`/rp profile [player]`)**: Formatted message or book/chest displaying basic character info: age, occupation/profession, brief bio, and status.
+- [ ] **Mood / State Status**: Short player status indicator (e.g. `Injured`, `Busy`, `Traveling`).
 
-* **Papel do `In-RP` (Core):** Continua sendo o mod base de regras, lógica, vidas, dados e comandos, mantendo a capacidade de operar 100% server-side para clientes vanilla.
-* **Papel do `In-RP Companion` (Mod Client & Server):**
-  - Instalado **tanto no servidor quanto nos clientes** que desejam o pacote estendido.
-  - **Blocos e Itens Customizados:** Adição de blocos de ambientação/cenário para roleplay, itens consumíveis (ex: contrato de vidas, poções/totens de renascimento, moedas de RPG).
-  - **Interfaces Gráficas (GUIs):** Telas nativas e modernas para criação/edição de ficha de personagem, rolagem visual de dados e painéis administrativos visuais.
-  - **HUD & Imersão:** Indicadores na tela para status de RP, vidas restantes e balões de fala flutuantes (*speech bubbles*) sobre os personagens no chat local.
-  - **Efeitos Audiovisuais:** Sons e animações próprias integradas aos eventos do Core.
+### 3. Lives & Survival
+- [ ] **Life Transfer (`/lives transfer <player> [amount]`)**: Allow players to donate or share lives with each other (ideal for sacrifice mechanics, ritual healing, or clans).
+- [ ] **Audio/Visual Effect on Life Loss**: Dramatic sound and particle effect to alert nearby players when someone loses one of their limited lives.
+- [ ] **Revival Items**: Support for a custom consumable item (or totem/heart) that revives an eliminated player when used by another player.
 
 ---
 
-## ⚙️ Diretrizes para Novas Implementações
+## 🛡️ Administration & Moderation
 
-Ao escolher e implementar qualquer funcionalidade deste documento:
-1. Manter a premissa de ser **100% Server-Side** para o mod base `In-RP Core` (clientes vanilla conectam sem precisar do mod).
-2. Respeitar as diretrizes de invariantes e testes do [ARCHITECTURE.md](file:///c:/Users/Rian/Documents/GitHub/in-rp-1.21.1/ARCHITECTURE.md).
-3. Todas as mensagens devem possuir chaves correspondentes em `en_us.json` e `pt_br.json`.
+- [ ] **Audit Logging (`inrp_audit.log`)**: Dedicated log file recording critical admin actions (revives, life alterations, resets) for easy staff monitoring.
+- [ ] **LuckPerms / NeoForge Permissions Integration**: Fine-grained permission nodes (`inrp.command.roll`, `inrp.command.lives`, `inrp.admin.*`) beyond default vanilla OP level 2.
+- [ ] **Command `/rpadmin inspect <player>`**: Comprehensive admin panel to inspect everything about a player in one view (RP status, AFK, lives, deaths, current coordinates).
 
+---
+
+## 🚀 Future Vision: "In-RP Companion / Addon" Ecosystem
+
+> **Planning Phase:** To be developed **only after** the core mod (`In-RP Core`) is mature, complete, and stable.
+
+The vision of this future project is to expand roleplay boundaries when both the server and players opt for a full modded experience:
+
+* **Role of `In-RP` (Core):** Remains the foundational mod for rules, logic, lives, dice, and commands, maintaining 100% server-side operation for vanilla clients.
+* **Role of `In-RP Companion` (Client & Server Mod):**
+  - Installed **on both server and client** for players opting for the extended experience.
+  - **Custom Blocks & Items:** Decorative roleplay blocks, consumables (e.g. life contracts, revival potions/totems, RPG coins).
+  - **Graphical User Interfaces (GUIs):** Clean, modern native screens for character sheet creation/editing, visual dice rolling, and visual admin panels.
+  - **HUD & Immersion:** On-screen indicators for RP status, remaining lives, and floating speech bubbles above characters in local chat.
+  - **Audiovisual Effects:** Custom sound effects and animations integrated with Core events.
+
+---
+
+## ⚙️ Implementation Guidelines
+
+When selecting and implementing any feature from this document:
+1. Maintain the **100% Server-Side** premise for the base `In-RP Core` mod (vanilla clients connect without needing client mods).
+2. Adhere to invariant and testing guidelines in [ARCHITECTURE.md](ARCHITECTURE.md).
+3. All player-facing messages must have matching keys in both `en_us.json` and `pt_br.json`.

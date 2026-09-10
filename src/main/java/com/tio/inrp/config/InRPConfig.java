@@ -22,6 +22,11 @@ public class InRPConfig {
     public static final ModConfigSpec.IntValue AFK_TIMEOUT_SECONDS;
     public static final ModConfigSpec.IntValue AFK_KICK_SECONDS;
     public static final ModConfigSpec.BooleanValue AUTO_DISABLE_RP_ON_AFK;
+    public static final ModConfigSpec.BooleanValue LOCAL_CHAT_ENABLED;
+    public static final ModConfigSpec.DoubleValue LOCAL_CHAT_RADIUS;
+    public static final ModConfigSpec.IntValue GLOBAL_CHAT_COOLDOWN_SECONDS;
+    public static final ModConfigSpec.BooleanValue SPY_LOCAL_CHAT;
+    public static final ModConfigSpec.BooleanValue SPY_PRIVATE_MESSAGES;
 
     static {
         BUILDER.push("general");
@@ -105,6 +110,30 @@ public class InRPConfig {
         AUTO_DISABLE_RP_ON_AFK = BUILDER
                 .comment("If true, entering AFK mode automatically disables RP mode")
                 .define("autoDisableRPOnAFK", true);
+
+        BUILDER.pop();
+
+        BUILDER.push("chat");
+
+        LOCAL_CHAT_ENABLED = BUILDER
+                .comment("Whether standard chat is converted into proximity local chat")
+                .define("localChatEnabled", true);
+
+        LOCAL_CHAT_RADIUS = BUILDER
+                .comment("Proximity radius in blocks for local chat")
+                .defineInRange("localChatRadius", 40.0, 5.0, 500.0);
+
+        GLOBAL_CHAT_COOLDOWN_SECONDS = BUILDER
+                .comment("Cooldown in seconds between messages in /g or /global (0 to disable)")
+                .defineInRange("globalChatCooldownSeconds", 3, 0, 300);
+
+        SPY_LOCAL_CHAT = BUILDER
+                .comment("Whether staff with Chat Spy active receive out-of-range local chat")
+                .define("spyLocalChat", true);
+
+        SPY_PRIVATE_MESSAGES = BUILDER
+                .comment("Whether staff with Chat Spy active receive copies of private messages (/tell, /msg, /w)")
+                .define("spyPrivateMessages", false);
 
         BUILDER.pop();
     }

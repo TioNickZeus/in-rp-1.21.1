@@ -91,5 +91,13 @@
   "inrp.admin.help.lives_setdeaths": "/rpadmin lives setdeaths <targets> <amount> - Set death count",
   "inrp.admin.help.lives_action": "/rpadmin lives action <spectator|kick> - Set elimination action",
   "inrp.admin.help.lives_applydefault": "/rpadmin lives applydefault [targets] - Apply default lives",
-  "inrp.admin.help.confirm": "/rpadmin confirm - Confirm a pending bulk action"
+  "inrp.admin.help.confirm": "/rpadmin confirm - Confirm a pending bulk action",
+  "inrp.admin.help.spy": "/rpadmin spy - Toggle chat spy for staff",
+
+  "inrp.chat.local.no_one_heard": "(Nobody nearby heard you)",
+  "inrp.chat.global.cooldown": "Please wait %s second(s) before using global chat again.",
+  "inrp.chat.global.empty": "You must enter a message to send to global chat.",
+  "inrp.chat.spy.enabled": "Chat Spy enabled.",
+  "inrp.chat.spy.disabled": "Chat Spy disabled.",
+  "inrp.help.global": "/g <message> - Send a message to global server chat"
 }
