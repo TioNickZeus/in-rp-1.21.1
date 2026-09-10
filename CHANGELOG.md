@@ -8,6 +8,7 @@ All notable changes to the In-RP mod will be documented in this file.
 
 - **Server Shutdown Crash & World Lock Fix** — Fixed an `IllegalStateException: Cannot get config value before config is loaded` during `ModConfigEvent.Unloading` on server shutdown when `LocalizationHelper` attempted to read an unloaded config spec. Server shutdown is now completely clean and properly releases the `session.lock` file, preventing worlds from becoming locked, disappearing from the singleplayer world list, or freezing the Java process with an `OverlappingFileLockException`.
 - **Singleplayer/LAN Host Elimination Protection** — When `livesAction = "kick"`, the host player of a Singleplayer/LAN session is now gracefully placed into Spectator mode with an informative message instead of being disconnected, preventing the integrated server from abruptly terminating and disconnecting all friends playing on LAN.
+- **Fluid Bucket Placement Leak Fix** — Fixed a bypass where players in RP mode could place water, lava, and mob buckets when `blockPlaceAllowedInRP = false`. Bucket fluid placement is now intercepted via `RightClickBlock` and `RightClickItem` with an action bar notification, while preserving legitimate container access (opening chests, barrels) and consumable item usage (drinking potions).
 
 ### 🧹 Improvements & Tweaks
 

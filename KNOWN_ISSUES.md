@@ -42,45 +42,33 @@ The purpose of this file is to document suspected issues thoroughly with **step-
 
 ---
 
-### 2. 🧪 [Pending Testing] Indirect PvP Damage Bypass (Projectiles, Splash Potions, Explosives)
-* **Affected Areas:** [RPGameplayRulesHandler.java](file:///c:/Users/Rian/Documents/GitHub/in-rp-1.21.1/src/main/java/com/tio/inrp/events/RPGameplayRulesHandler.java) (`onAttackEntity`)
+### 2. 🛡️ [Resolved] Indirect PvP Damage Bypass (Projectiles, Splash Potions, Explosives)
+* **Affected Areas:** [RPGameplayRulesHandler.java](file:///c:/Users/Rian/Documents/GitHub/in-rp-1.21.1/src/main/java/com/tio/inrp/events/RPGameplayRulesHandler.java) (`onAttackEntity`, `onIncomingDamage`)
 * **Severity:** High (Gameplay Rule Bypass)
+* **Status:** Resolved in `v1.0.7`
 * **Description:**
-  - Currently, `pvpAllowedInRP = false` only cancels `AttackEntityEvent`.
-  - In Minecraft / NeoForge, `AttackEntityEvent` only triggers on direct melee left-click attacks.
-  - **The Exploit:** Players in RP mode (or against RP players) might still deal/take damage through non-melee vectors:
-    1. Projectiles (Bows, Crossbows, Tridents, Wind Charges).
-    2. Splash and Lingering Potions (Harming, Poison, Wither).
-    3. Explosives (TNT, End Crystals, Respawn Anchors).
-    4. Sweeping edge collateral damage when hitting an adjacent mob or pet.
-* **Reproduction Guide (To test with friends):**
-  1. Ensure `pvpAllowedInRP = false` in `inrp-server.toml` (or via `/rpadmin config pvp false`).
-  2. Player A and Player B both toggle `/rp on`.
-  3. Player A tries to punch Player B. Confirm that melee attack is cancelled with the warning message.
-  4. Player A shoots Player B with a bow. Check if damage is dealt.
-  5. Player A throws a Splash Potion of Harming at Player B. Check if damage is dealt.
-  6. Player A attacks a cow standing directly next to Player B with a sweeping sword. Check if Player B receives sweep damage.
-* **Proposed Mitigation:**
-  - Subscribe to `LivingIncomingDamageEvent` or `LivingDamageEvent`.
-  - If attacker/cause entity resolves to a `Player`, verify RP states and cancel event if either participant is in RP mode and PvP is restricted.
+  - Originally, `pvpAllowedInRP = false` only cancelled `AttackEntityEvent` (melee left-click attacks).
+  - Theoretical exploit allowed non-melee vectors (projectiles, TNT, harming potions, sweeping edge) to bypass the protection.
+* **Resolution:**
+  - Implemented `LivingIncomingDamageEvent` listener in `RPGameplayRulesHandler.onIncomingDamage`. If `pvpAllowedInRP = false` and the responsible entity resolves to a player, damage is cancelled and the attacker is notified.
+* **Verification & Testing:**
+  - Verified in live multiplayer: direct attacks, bows, crossbows, tridents, and splash potions of harming are completely blocked.
+* **Known Caveat / Edge Case:**
+  - Status effect damage over time from **Poison** (e.g. Splash Potion of Poison) can still apply damage ticks because Minecraft attributes periodic effect ticks to the status effect rather than directly to the player entity. However, Poison is strictly non-lethal in vanilla (stops at 0.5 hearts / 1 HP) and cannot eliminate or kill a player.
+  - In heavily modded modpacks, certain custom damage types or magic mods might similarly bypass standard player attribution, but all core vanilla combat vectors are fully protected.
 
 ---
 
-### 3. 🧪 [Pending Testing] Block Protection Bypasses via Fluid Buckets & Tool Interactions
-* **Affected Areas:** [RPGameplayRulesHandler.java](file:///c:/Users/Rian/Documents/GitHub/in-rp-1.21.1/src/main/java/com/tio/inrp/events/RPGameplayRulesHandler.java) (`onBlockPlace`, `onBlockBreak`)
+### 3. 🛡️ [Resolved] Fluid Bucket Placement Bypass (Water & Lava)
+* **Affected Areas:** [RPGameplayRulesHandler.java](file:///c:/Users/Rian/Documents/GitHub/in-rp-1.21.1/src/main/java/com/tio/inrp/events/RPGameplayRulesHandler.java) (`onBlockPlace`, `onRightClickBlock`, `onRightClickItem`)
 * **Severity:** Medium (World Protection Bypass)
+* **Status:** Resolved in `v1.0.7`
 * **Description:**
-  - `blockPlaceAllowedInRP = false` and `blockBreakAllowedInRP = false` intercept `BlockEvent.BreakEvent` and `BlockEvent.EntityPlaceEvent`.
-  - **Edge Case to Verify:** Check whether fluid bucket placement (water/lava), ignition with Flint & Steel, or block modifications via right-click tools (stripping wood with axes, tilling soil with hoes, flattening dirt with shovels) bypass these checks.
-* **Reproduction Guide:**
-  1. Set `blockPlaceAllowedInRP = false` and `blockBreakAllowedInRP = false`.
-  2. Enter RP mode (`/rp on`).
-  3. Attempt to place a block (e.g., Cobblestone). Confirm cancellation.
-  4. Attempt to empty a Water Bucket or Lava Bucket on the ground.
-  5. Attempt to use Flint & Steel to start a fire.
-  6. Attempt to strip an oak log with an axe or till dirt with a hoe.
-* **Proposed Mitigation:**
-  - If leaks are confirmed, subscribe to `PlayerInteractEvent.RightClickBlock` and validate item actions against block place/break rules.
+  - Originally, `blockPlaceAllowedInRP = false` only intercepted `BlockEvent.EntityPlaceEvent`. Emptying water and lava buckets into the world bypassed protection because bucket emptying was processed as an item interaction.
+* **Resolution:**
+  - Added `onRightClickBlock` listener: sets `event.setUseItem(TriState.FALSE)` when a restricted player holds a fluid bucket, preventing fluid placement while allowing block interactions (opening chests, barrels, doors) to proceed normally.
+  - Added `onRightClickItem` listener: cancels fluid placement when aiming at fluids or air (`event.setCanceled(true)` with `InteractionResult.FAIL`) and displays the action bar notification `inrp.rule.block_place_disabled`.
+  - Added `isFluidPlacementItem(stack)` supporting both vanilla `BucketItem` instances (water, lava, mob buckets) and modded fluid containers via NeoForge `FluidUtil`.
 
 ---
 
@@ -138,6 +126,24 @@ The purpose of this file is to document suspected issues thoroughly with **step-
   1. Set `pvpAllowedInRP = false` in `inrp-server.toml`.
   2. Player A enters RP (`/rp on`) and waits until AFK is triggered.
   3. Verify that Player B can attack Player A once AFK status triggers, proving no invulnerability exploit exists.
+
+---
+
+## 📜 Session Test Logs
+
+### Test Log: 2026-09-10
+- **Tested Issue:** #2 Indirect PvP Damage Bypass (Projectiles, Splash Potions, Explosives)
+- **Participants:** Host & Players
+- **Result:** Confirmed & Resolved
+- **Observations:** All direct attacks, bows, tridents, sweep attacks, and splash potions of harming are blocked with action bar notification. The only effect capable of inflicting damage is Splash Potion of Poison, which ticks via vanilla status effect magic damage (null direct entity). Because Poison cannot drop health below 0.5 hearts (1 HP), it is non-lethal and cannot eliminate or kill players.
+- **Next Steps:** Closed as `[Resolved]` with the poison caveat noted.
+
+### Test Log: 2026-09-10
+- **Tested Issue:** #3 Fluid Bucket Placement Bypass (Water & Lava)
+- **Participants:** Host & Players
+- **Result:** Confirmed & Resolved in v1.0.7
+- **Observations:** Shovels, hoes, axes, bone meal, and flint & steel were verified and are properly blocked. Consumable items (potions) and opening containers (chests) work normally. Pouring water or lava from buckets is now intercepted via `RightClickBlock` and `RightClickItem`, successfully preventing fluid placement while keeping container interactions open.
+- **Next Steps:** Closed as `[Resolved]`.
 
 ---
 
