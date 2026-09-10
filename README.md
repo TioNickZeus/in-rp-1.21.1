@@ -13,14 +13,15 @@ A lightweight, server-friendly **Roleplay (RP) Switch & Utility Mod** for **Mine
   - Automatically disables RP mode upon entering AFK to protect character immersion and avoid involuntary deaths.
   - Distinct visual markers: `[AFK]` tag on the Tab list and ` [AFK]` suffix on overhead nametag.
   - Instant wake-up upon movement, camera rotation, or typing in chat.
-  - Optional configurable idle kick.
+  - Optional configurable idle kick, applied only to players already marked as AFK.
 - **Proximity Local Chat & Global Chat (`/g`)**:
   - Regular chat messages are routed locally by proximity with configurable radius (e.g. 40 blocks).
   - Subtle feedback when nobody is around to hear you: `(Nobody nearby heard you)`.
   - `/g <message>` or `/global <message>` to broadcast server-wide with anti-spam cooldown.
   - Chat Spy (`/rpadmin spy` / `/chatspy`) for staff to monitor out-of-range local chat and private messages (`/tell`, `/msg`, `/w`).
 - **Dynamic Overhead & Chat Identifiers**:
-  - Displays a unified roleplay suffix (e.g., `Player [RP]`) both above the player's head and in chat via native Minecraft Scoreboard Teams without duplication.
+  - Displays a unified roleplay suffix (e.g., `Player [in RP]`) above the player's head, in the tab list and in chat via native Minecraft Scoreboard Teams, without duplication.
+  - The text comes from `nametagSuffix` in the server config; set it to `""` to disable the marker entirely.
 - **Modular Dice Roller (`/roll`)**:
   - Standard dice: `/roll` (default 1d20), `/roll 20`, `/roll 100`.
   - Classic RPG notation: `/roll 2d6`, `/roll 3d20`, `/roll 1d100` with sum and individual die breakdown.
@@ -28,7 +29,7 @@ A lightweight, server-friendly **Roleplay (RP) Switch & Utility Mod** for **Mine
 - **Staff Administration (`/rpadmin`)**:
   - Remotely set player RP modes using native entity selectors (`@a`, `@p`, distance filters, etc.).
   - Dynamically toggle roleplay rules on the fly:
-    - **PvP in RP**: Enable or prevent combat while in RP.
+    - **PvP in RP**: Enable or prevent combat while in RP, including indirect damage (arrows, tridents, thrown potions, TNT).
     - **Block Break Protection**: Prevent players from breaking blocks in RP.
     - **Block Place Protection**: Prevent players from placing blocks in RP.
     - **Operator Bypass**: Allow staff/OPs to bypass restrictions even when rules are active.
@@ -87,21 +88,27 @@ A lightweight, server-friendly **Roleplay (RP) Switch & Utility Mod** for **Mine
 
 ## ⚙️ Configuration
 
-The server configuration file is generated automatically at `config/inrp-server.toml`:
+The configuration is a NeoForge `SERVER` config, so it is generated per world at
+`<world>/serverconfig/inrp-server.toml` (on a dedicated server: `world/serverconfig/inrp-server.toml`):
 
 ```toml
 [general]
     # Server fallback language for vanilla clients (e.g. en_us, pt_br)
+    # Must match a bundled file in assets/inrp/lang/; invalid values fall back to en_us
     serverLanguage = "en_us"
 
-    # Suffix displayed after player name in chat when in RP mode. Leave empty "" to disable.
-    chatSuffix = "[RP]"
-
-    # Suffix displayed in player nametag above head and tablist when in RP mode.
+    # Roleplay suffix shown after the player name above their head, in the tab list and in chat.
+    # In-RP marks players with a native scoreboard team, which carries a single suffix, so the
+    # same text is used in all three places. Leave empty "" to disable the marker entirely.
     nametagSuffix = " [in RP]"
+
+    # Fallback for nametagSuffix, used only when nametagSuffix is empty.
+    # Kept for compatibility with configs written before the suffixes were unified.
+    chatSuffix = "[RP]"
 
 [rules]
     # Whether PvP is allowed between or against players in RP mode
+    # Covers melee attacks as well as indirect damage such as arrows, thrown potions and TNT
     pvpAllowedInRP = true
 
     # Whether players in RP mode can break blocks
@@ -140,6 +147,8 @@ The server configuration file is generated automatically at `config/inrp-server.
     afkTimeoutSeconds = 300
 
     # Idle time in seconds before an AFK player is kicked (-1 to disable kick)
+    # Only players already marked as AFK are kicked, so values below afkTimeoutSeconds
+    # behave as if they were equal to afkTimeoutSeconds.
     afkKickSeconds = -1
 
     # If true, entering AFK mode automatically disables RP mode

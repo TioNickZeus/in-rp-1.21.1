@@ -5,63 +5,54 @@ import com.tio.inrp.data.InRPAttachments;
 import com.tio.inrp.util.LocalizationHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket;
 import net.minecraft.server.ServerScoreboard;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.scores.PlayerTeam;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
-public class ScoreboardHandler {
+/**
+ * Renders roleplay and AFK markers through native scoreboard teams.
+ *
+ * <p>Using teams keeps the mod fully server-side: vanilla clients apply the team suffix themselves above the
+ * player's head, in the tab list and in chat, with no custom packets and no risk of the marker being duplicated.
+ *
+ * <p>A player is on at most one In-RP team at a time, and AFK takes precedence over RP mode. Teams are created
+ * lazily, so a server that never uses these features keeps a clean scoreboard.
+ */
+public final class ScoreboardHandler {
+
+    /** Team carrying the roleplay suffix. */
     public static final String TEAM_NAME = "inrp_active";
+    /** Team carrying the AFK suffix. */
     public static final String TEAM_AFK_NAME = "inrp_afk";
 
+    private ScoreboardHandler() {
+    }
+
+    /** Moves the player onto the team matching their current state and pushes the new display name to clients. */
     public static void updatePlayerScoreboard(ServerPlayer player) {
-        if (player == null || player.server == null) return;
+        if (player == null || player.server == null) {
+            return;
+        }
         ServerScoreboard scoreboard = player.server.getScoreboard();
 
-        // Active RP Team
-        PlayerTeam teamRP = scoreboard.getPlayerTeam(TEAM_NAME);
-        if (teamRP == null) {
-            teamRP = scoreboard.addPlayerTeam(TEAM_NAME);
-            teamRP.setDisplayName(Component.literal("In RP"));
-        }
-        Component suffixRP = Component.literal(" ")
-                .append(LocalizationHelper.getMessage("inrp.chat.suffix").withStyle(ChatFormatting.GOLD));
-        teamRP.setPlayerSuffix(suffixRP);
+        boolean afk = InRPAttachments.isAFK(player);
+        boolean inRP = !afk && InRPAttachments.isInRP(player);
+        String targetTeamName = afk ? TEAM_AFK_NAME : (inRP ? TEAM_NAME : null);
 
-        // AFK Team
-        PlayerTeam teamAFK = scoreboard.getPlayerTeam(TEAM_AFK_NAME);
-        if (teamAFK == null) {
-            teamAFK = scoreboard.addPlayerTeam(TEAM_AFK_NAME);
-            teamAFK.setDisplayName(Component.literal("AFK"));
-        }
-        Component suffixAFK = Component.literal(" ")
-                .append(LocalizationHelper.getMessage("inrp.afk.nametag.suffix").withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC));
-        teamAFK.setPlayerSuffix(suffixAFK);
+        // Pick up config or language changes on teams that already exist.
+        refreshSuffix(scoreboard, TEAM_NAME);
+        refreshSuffix(scoreboard, TEAM_AFK_NAME);
 
-        boolean isAFK = InRPAttachments.isAFK(player);
-        boolean inRP = InRPAttachments.isInRP(player);
+        leaveTeamUnless(scoreboard, player, TEAM_NAME, targetTeamName);
+        leaveTeamUnless(scoreboard, player, TEAM_AFK_NAME, targetTeamName);
 
-        if (isAFK) {
-            if (player.getTeam() == teamRP) {
-                scoreboard.removePlayerFromTeam(player.getScoreboardName(), teamRP);
-            }
-            if (player.getTeam() != teamAFK) {
-                scoreboard.addPlayerToTeam(player.getScoreboardName(), teamAFK);
-            }
-        } else if (inRP) {
-            if (player.getTeam() == teamAFK) {
-                scoreboard.removePlayerFromTeam(player.getScoreboardName(), teamAFK);
-            }
-            if (player.getTeam() != teamRP) {
-                scoreboard.addPlayerToTeam(player.getScoreboardName(), teamRP);
-            }
-        } else {
-            if (player.getTeam() == teamRP) {
-                scoreboard.removePlayerFromTeam(player.getScoreboardName(), teamRP);
-            }
-            if (player.getTeam() == teamAFK) {
-                scoreboard.removePlayerFromTeam(player.getScoreboardName(), teamAFK);
+        if (targetTeamName != null) {
+            PlayerTeam team = getOrCreateTeam(scoreboard, targetTeamName);
+            if (player.getTeam() != team) {
+                scoreboard.addPlayerToTeam(player.getScoreboardName(), team);
             }
         }
 
@@ -69,14 +60,13 @@ public class ScoreboardHandler {
         refreshPlayerTabList(player);
     }
 
+    /** Re-sends the player's tab list entry so tags such as {@code [DEAD]} and {@code [AFK]} appear immediately. */
     public static void refreshPlayerTabList(ServerPlayer player) {
-        if (player == null || player.server == null) return;
-        player.server.getPlayerList().broadcastAll(
-                new net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket(
-                        net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket.Action.UPDATE_DISPLAY_NAME,
-                        player
-                )
-        );
+        if (player == null || player.server == null) {
+            return;
+        }
+        player.server.getPlayerList().broadcastAll(new ClientboundPlayerInfoUpdatePacket(
+                ClientboundPlayerInfoUpdatePacket.Action.UPDATE_DISPLAY_NAME, player));
     }
 
     @SubscribeEvent
@@ -97,6 +87,56 @@ public class ScoreboardHandler {
     public static void onPlayerChangeDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             updatePlayerScoreboard(player);
+        }
+    }
+
+    private static PlayerTeam getOrCreateTeam(ServerScoreboard scoreboard, String teamName) {
+        PlayerTeam team = scoreboard.getPlayerTeam(teamName);
+        if (team == null) {
+            team = scoreboard.addPlayerTeam(teamName);
+            team.setDisplayName(Component.literal(TEAM_AFK_NAME.equals(teamName) ? "AFK" : "In RP"));
+            applySuffix(team, suffixFor(teamName));
+        }
+        return team;
+    }
+
+    private static void refreshSuffix(ServerScoreboard scoreboard, String teamName) {
+        PlayerTeam team = scoreboard.getPlayerTeam(teamName);
+        if (team != null) {
+            applySuffix(team, suffixFor(teamName));
+        }
+    }
+
+    /**
+     * Writing a suffix broadcasts a team update packet to every connected client, so the value is only written when
+     * the rendered text actually changed.
+     */
+    private static void applySuffix(PlayerTeam team, Component suffix) {
+        if (!suffix.equals(team.getPlayerSuffix())) {
+            team.setPlayerSuffix(suffix);
+        }
+    }
+
+    private static Component suffixFor(String teamName) {
+        if (TEAM_AFK_NAME.equals(teamName)) {
+            return Component.literal(" ").append(LocalizationHelper.getMessage("inrp.afk.nametag.suffix")
+                    .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC));
+        }
+
+        String suffix = InRPConfig.rpSuffix();
+        if (suffix.isEmpty()) {
+            return Component.empty();
+        }
+        return Component.literal(" ").append(Component.literal(suffix).withStyle(ChatFormatting.GOLD));
+    }
+
+    private static void leaveTeamUnless(ServerScoreboard scoreboard, ServerPlayer player, String teamName, String keptTeamName) {
+        if (teamName.equals(keptTeamName)) {
+            return;
+        }
+        PlayerTeam team = scoreboard.getPlayerTeam(teamName);
+        if (team != null && player.getTeam() == team) {
+            scoreboard.removePlayerFromTeam(player.getScoreboardName(), team);
         }
     }
 }

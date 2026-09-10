@@ -1,7 +1,5 @@
 {
   "inrp.prefix": "[In-RP] ",
-  "inrp.chat.suffix": "[RP]",
-  "inrp.nametag.suffix": "[in RP]",
   
   "inrp.status.turned_on": "You have entered Roleplay mode (In-RP).",
   "inrp.status.turned_off": "You have exited Roleplay mode (Off-RP).",
@@ -94,6 +92,10 @@
   "inrp.admin.help.confirm": "/rpadmin confirm - Confirm a pending bulk action",
   "inrp.admin.help.spy": "/rpadmin spy - Toggle chat spy for staff",
 
+  "inrp.chat.local.tag": "[L]",
+  "inrp.chat.global.tag": "[G]",
+  "inrp.chat.spy.local.tag": "[SPY:L]",
+  "inrp.chat.spy.pm.tag": "[SPY:PM]",
   "inrp.chat.local.no_one_heard": "(Nobody nearby heard you)",
   "inrp.chat.global.cooldown": "Please wait %s second(s) before using global chat again.",
   "inrp.chat.global.empty": "You must enter a message to send to global chat.",

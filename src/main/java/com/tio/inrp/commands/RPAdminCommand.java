@@ -4,11 +4,15 @@ import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.tio.inrp.InRP;
 import com.tio.inrp.config.InRPConfig;
 import com.tio.inrp.data.InRPAttachments;
 import com.tio.inrp.data.InRPLivesManager;
+import com.tio.inrp.events.LivesEventHandler;
 import com.tio.inrp.events.ScoreboardHandler;
 import com.tio.inrp.util.ConfirmationManager;
+import com.tio.inrp.util.HelpText;
 import com.tio.inrp.util.LocalizationHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
@@ -17,95 +21,99 @@ import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.GameProfileArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.level.GameType;
+import net.minecraft.server.players.PlayerList;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 
-public class RPAdminCommand {
+/**
+ * {@code /rpadmin} &mdash; staff administration for roleplay state, gameplay rules and the lives system.
+ *
+ * <p>Commands that would touch {@value #CONFIRMATION_THRESHOLD} players or more are staged through
+ * {@link ConfirmationManager} first. Because a staged action may run up to ten seconds later, targets are stored as
+ * UUIDs and re-resolved when it executes: writing to a {@code ServerPlayer} that disconnected in the meantime would
+ * silently discard the change.
+ */
+public final class RPAdminCommand {
 
+    /** Number of affected players from which an explicit confirmation is required. */
     private static final int CONFIRMATION_THRESHOLD = 5;
+
+    private static final int MIN_LIVES = -1;
+    private static final int MAX_LIVES = 100_000;
+
+    private static final List<HelpText.Entry> HELP_ENTRIES = List.of(
+            new HelpText.Entry("inrp.admin.help.set", ChatFormatting.GRAY),
+            new HelpText.Entry("inrp.admin.help.config", ChatFormatting.GRAY),
+            new HelpText.Entry("inrp.admin.help.lives_set", ChatFormatting.GRAY),
+            new HelpText.Entry("inrp.admin.help.lives_revive", ChatFormatting.GRAY),
+            new HelpText.Entry("inrp.admin.help.lives_setdeaths", ChatFormatting.GRAY),
+            new HelpText.Entry("inrp.admin.help.lives_action", ChatFormatting.GRAY),
+            new HelpText.Entry("inrp.admin.help.lives_applydefault", ChatFormatting.GRAY),
+            new HelpText.Entry("inrp.admin.help.confirm", ChatFormatting.GRAY),
+            new HelpText.Entry("inrp.admin.help.spy", ChatFormatting.GRAY)
+    );
+
+    /** An action applied to a freshly resolved set of online targets. */
+    @FunctionalInterface
+    private interface TargetAction {
+        int run(List<ServerPlayer> targets);
+    }
+
+    private RPAdminCommand() {
+    }
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("rpadmin")
-                .requires(source -> source.hasPermission(2))
+                .requires(source -> source.hasPermission(InRP.STAFF_PERMISSION_LEVEL))
                 .then(Commands.literal("set")
                         .then(Commands.argument("targets", EntityArgument.players())
                                 .then(Commands.literal("on")
-                                        .executes(context -> setMode(
-                                                context.getSource(),
-                                                EntityArgument.getPlayers(context, "targets"),
-                                                true
-                                        )))
+                                        .executes(context -> setMode(context.getSource(),
+                                                EntityArgument.getPlayers(context, "targets"), true)))
                                 .then(Commands.literal("off")
-                                        .executes(context -> setMode(
-                                                context.getSource(),
-                                                EntityArgument.getPlayers(context, "targets"),
-                                                false
-                                        )))
+                                        .executes(context -> setMode(context.getSource(),
+                                                EntityArgument.getPlayers(context, "targets"), false)))
                         )
                 )
                 .then(Commands.literal("config")
-                        .then(Commands.literal("pvp")
-                                .then(Commands.argument("value", BoolArgumentType.bool())
-                                        .executes(context -> setConfigPvp(
-                                                context.getSource(),
-                                                BoolArgumentType.getBool(context, "value")
-                                        ))))
-                        .then(Commands.literal("block_break")
-                                .then(Commands.argument("value", BoolArgumentType.bool())
-                                        .executes(context -> setConfigBlockBreak(
-                                                context.getSource(),
-                                                BoolArgumentType.getBool(context, "value")
-                                        ))))
-                        .then(Commands.literal("block_place")
-                                .then(Commands.argument("value", BoolArgumentType.bool())
-                                        .executes(context -> setConfigBlockPlace(
-                                                context.getSource(),
-                                                BoolArgumentType.getBool(context, "value")
-                                        ))))
-                        .then(Commands.literal("op_bypass")
-                                .then(Commands.argument("value", BoolArgumentType.bool())
-                                        .executes(context -> setConfigOpBypass(
-                                                context.getSource(),
-                                                BoolArgumentType.getBool(context, "value")
-                                        ))))
+                        .then(ruleNode("pvp", InRPConfig.PVP_ALLOWED_IN_RP, "inrp.admin.config.pvp"))
+                        .then(ruleNode("block_break", InRPConfig.BLOCK_BREAK_ALLOWED_IN_RP, "inrp.admin.config.block_break"))
+                        .then(ruleNode("block_place", InRPConfig.BLOCK_PLACE_ALLOWED_IN_RP, "inrp.admin.config.block_place"))
+                        .then(ruleNode("op_bypass", InRPConfig.OP_BYPASS_RESTRICTIONS, "inrp.admin.config.op_bypass"))
                 )
                 .then(Commands.literal("lives")
                         .then(Commands.literal("set")
                                 .then(Commands.argument("targets", EntityArgument.players())
-                                        .then(Commands.argument("amount", IntegerArgumentType.integer(-1, 100000))
-                                                .executes(context -> setLives(
-                                                        context.getSource(),
+                                        .then(Commands.argument("amount", IntegerArgumentType.integer(MIN_LIVES, MAX_LIVES))
+                                                .executes(context -> setLives(context.getSource(),
                                                         EntityArgument.getPlayers(context, "targets"),
-                                                        IntegerArgumentType.getInteger(context, "amount")
-                                                )))))
+                                                        IntegerArgumentType.getInteger(context, "amount"))))))
                         .then(Commands.literal("revive")
                                 .then(Commands.argument("targets", GameProfileArgument.gameProfile())
-                                        .executes(context -> reviveGameProfiles(
-                                                context.getSource(),
-                                                GameProfileArgument.getGameProfiles(context, "targets")
-                                        ))))
+                                        .executes(context -> revive(context.getSource(),
+                                                GameProfileArgument.getGameProfiles(context, "targets")))))
                         .then(Commands.literal("setdeaths")
                                 .then(Commands.argument("targets", EntityArgument.players())
-                                        .then(Commands.argument("amount", IntegerArgumentType.integer(0, 100000))
-                                                .executes(context -> setDeaths(
-                                                        context.getSource(),
+                                        .then(Commands.argument("amount", IntegerArgumentType.integer(0, MAX_LIVES))
+                                                .executes(context -> setDeaths(context.getSource(),
                                                         EntityArgument.getPlayers(context, "targets"),
-                                                        IntegerArgumentType.getInteger(context, "amount")
-                                                )))))
+                                                        IntegerArgumentType.getInteger(context, "amount"))))))
                         .then(Commands.literal("action")
-                                .then(Commands.literal("spectator")
-                                        .executes(context -> setLivesAction(context.getSource(), "spectator")))
-                                .then(Commands.literal("kick")
-                                        .executes(context -> setLivesAction(context.getSource(), "kick"))))
+                                .then(Commands.literal(InRPConfig.LIVES_ACTION_SPECTATOR)
+                                        .executes(context -> setLivesAction(context.getSource(),
+                                                InRPConfig.LIVES_ACTION_SPECTATOR)))
+                                .then(Commands.literal(InRPConfig.LIVES_ACTION_KICK)
+                                        .executes(context -> setLivesAction(context.getSource(),
+                                                InRPConfig.LIVES_ACTION_KICK))))
                         .then(Commands.literal("applydefault")
                                 .executes(context -> applyDefaultLives(context.getSource(), null))
                                 .then(Commands.argument("targets", EntityArgument.players())
-                                        .executes(context -> applyDefaultLives(
-                                                context.getSource(),
-                                                EntityArgument.getPlayers(context, "targets")
-                                        ))))
+                                        .executes(context -> applyDefaultLives(context.getSource(),
+                                                EntityArgument.getPlayers(context, "targets")))))
                 )
                 .then(Commands.literal("confirm")
                         .executes(context -> executeConfirm(context.getSource())))
@@ -116,344 +124,252 @@ public class RPAdminCommand {
         );
     }
 
+    // ------------------------------------------------------------------- RP mode
+
     private static int setMode(CommandSourceStack source, Collection<ServerPlayer> targets, boolean enable) {
-        if (targets.size() >= CONFIRMATION_THRESHOLD && requiresConfirmation(source)) {
-            String desc = LocalizationHelper.format("inrp.admin.confirm.desc.setmode", targets.size(), enable ? "ON" : "OFF");
-            ConfirmationManager.requestConfirmation(source, getAdminUUID(source), desc, () -> executeSetMode(source, targets, enable));
-            return 0;
-        }
-        return executeSetMode(source, targets, enable);
+        String status = LocalizationHelper.getRaw(enable ? "inrp.admin.status_on" : "inrp.admin.status_off");
+        return stage(source, targets,
+                LocalizationHelper.format("inrp.admin.confirm.desc.setmode", targets.size(), status),
+                players -> executeSetMode(source, players, enable));
     }
 
-    private static int executeSetMode(CommandSourceStack source, Collection<ServerPlayer> targets, boolean enable) {
-        int count = 0;
+    private static int executeSetMode(CommandSourceStack source, List<ServerPlayer> targets, boolean enable) {
+        String messageKey = enable ? "inrp.status.turned_on" : "inrp.status.turned_off";
+        ChatFormatting color = enable ? ChatFormatting.GREEN : ChatFormatting.AQUA;
+
         for (ServerPlayer player : targets) {
             InRPAttachments.setInRP(player, enable);
             ScoreboardHandler.updatePlayerScoreboard(player);
-
-            String playerMsgKey = enable ? "inrp.status.turned_on" : "inrp.status.turned_off";
-            ChatFormatting color = enable ? ChatFormatting.GREEN : ChatFormatting.AQUA;
-            player.sendSystemMessage(LocalizationHelper.getPrefixedMessage(playerMsgKey).withStyle(color));
-            count++;
+            player.sendSystemMessage(LocalizationHelper.getPrefixedMessage(messageKey).withStyle(color));
         }
 
-        String statusKey = enable ? "inrp.admin.status_on" : "inrp.admin.status_off";
-        Component statusComponent = LocalizationHelper.getMessage(statusKey);
-        final int finalCount = count;
-
-        source.sendSuccess(() -> LocalizationHelper.getPrefixedMessage(
-                "inrp.admin.set.success",
-                statusComponent,
-                finalCount
-        ).withStyle(ChatFormatting.GOLD), true);
-
-        return count;
+        Component status = LocalizationHelper.getMessage(enable ? "inrp.admin.status_on" : "inrp.admin.status_off");
+        int affected = targets.size();
+        source.sendSuccess(() -> LocalizationHelper
+                .getPrefixedMessage("inrp.admin.set.success", status, affected)
+                .withStyle(ChatFormatting.GOLD), true);
+        return affected;
     }
 
-    private static int setConfigPvp(CommandSourceStack source, boolean value) {
-        if (InRPConfig.PVP_ALLOWED_IN_RP.get() == value) {
-            String statusKey = value ? "inrp.admin.status_on" : "inrp.admin.status_off";
-            Component statusComponent = LocalizationHelper.getMessage(statusKey);
-            source.sendFailure(LocalizationHelper.getPrefixedMessage(
-                    "inrp.admin.config.pvp.already",
-                    statusComponent
-            ).withStyle(ChatFormatting.RED));
+    // -------------------------------------------------------------- Gameplay rules
+
+    private static LiteralArgumentBuilder<CommandSourceStack> ruleNode(String name,
+                                                                       ModConfigSpec.BooleanValue setting,
+                                                                       String messageKey) {
+        return Commands.literal(name)
+                .then(Commands.argument("value", BoolArgumentType.bool())
+                        .executes(context -> setRule(context.getSource(), setting, messageKey,
+                                BoolArgumentType.getBool(context, "value"))));
+    }
+
+    private static int setRule(CommandSourceStack source, ModConfigSpec.BooleanValue setting, String messageKey,
+                               boolean value) {
+        Component status = LocalizationHelper.getMessage(value ? "inrp.admin.status_on" : "inrp.admin.status_off");
+
+        // Avoid a pointless disk write, and tell the admin nothing changed.
+        if (setting.get() == value) {
+            source.sendFailure(LocalizationHelper.getPrefixedMessage(messageKey + ".already", status)
+                    .withStyle(ChatFormatting.RED));
             return 0;
         }
 
-        InRPConfig.PVP_ALLOWED_IN_RP.set(value);
+        setting.set(value);
         InRPConfig.SPEC.save();
 
-        String statusKey = value ? "inrp.admin.status_on" : "inrp.admin.status_off";
-        Component statusComponent = LocalizationHelper.getMessage(statusKey);
-
-        source.sendSuccess(() -> LocalizationHelper.getPrefixedMessage(
-                "inrp.admin.config.pvp",
-                statusComponent
-        ).withStyle(ChatFormatting.GREEN), true);
-
+        source.sendSuccess(() -> LocalizationHelper.getPrefixedMessage(messageKey, status)
+                .withStyle(ChatFormatting.GREEN), true);
         return 1;
     }
 
-    private static int setConfigBlockBreak(CommandSourceStack source, boolean value) {
-        if (InRPConfig.BLOCK_BREAK_ALLOWED_IN_RP.get() == value) {
-            String statusKey = value ? "inrp.admin.status_on" : "inrp.admin.status_off";
-            Component statusComponent = LocalizationHelper.getMessage(statusKey);
-            source.sendFailure(LocalizationHelper.getPrefixedMessage(
-                    "inrp.admin.config.block_break.already",
-                    statusComponent
-            ).withStyle(ChatFormatting.RED));
-            return 0;
-        }
-
-        InRPConfig.BLOCK_BREAK_ALLOWED_IN_RP.set(value);
-        InRPConfig.SPEC.save();
-
-        String statusKey = value ? "inrp.admin.status_on" : "inrp.admin.status_off";
-        Component statusComponent = LocalizationHelper.getMessage(statusKey);
-
-        source.sendSuccess(() -> LocalizationHelper.getPrefixedMessage(
-                "inrp.admin.config.block_break",
-                statusComponent
-        ).withStyle(ChatFormatting.GREEN), true);
-
-        return 1;
-    }
-
-    private static int setConfigBlockPlace(CommandSourceStack source, boolean value) {
-        if (InRPConfig.BLOCK_PLACE_ALLOWED_IN_RP.get() == value) {
-            String statusKey = value ? "inrp.admin.status_on" : "inrp.admin.status_off";
-            Component statusComponent = LocalizationHelper.getMessage(statusKey);
-            source.sendFailure(LocalizationHelper.getPrefixedMessage(
-                    "inrp.admin.config.block_place.already",
-                    statusComponent
-            ).withStyle(ChatFormatting.RED));
-            return 0;
-        }
-
-        InRPConfig.BLOCK_PLACE_ALLOWED_IN_RP.set(value);
-        InRPConfig.SPEC.save();
-
-        String statusKey = value ? "inrp.admin.status_on" : "inrp.admin.status_off";
-        Component statusComponent = LocalizationHelper.getMessage(statusKey);
-
-        source.sendSuccess(() -> LocalizationHelper.getPrefixedMessage(
-                "inrp.admin.config.block_place",
-                statusComponent
-        ).withStyle(ChatFormatting.GREEN), true);
-
-        return 1;
-    }
-
-    private static int setConfigOpBypass(CommandSourceStack source, boolean value) {
-        if (InRPConfig.OP_BYPASS_RESTRICTIONS.get() == value) {
-            String statusKey = value ? "inrp.admin.status_on" : "inrp.admin.status_off";
-            Component statusComponent = LocalizationHelper.getMessage(statusKey);
-            source.sendFailure(LocalizationHelper.getPrefixedMessage(
-                    "inrp.admin.config.op_bypass.already",
-                    statusComponent
-            ).withStyle(ChatFormatting.RED));
-            return 0;
-        }
-
-        InRPConfig.OP_BYPASS_RESTRICTIONS.set(value);
-        InRPConfig.SPEC.save();
-
-        String statusKey = value ? "inrp.admin.status_on" : "inrp.admin.status_off";
-        Component statusComponent = LocalizationHelper.getMessage(statusKey);
-
-        source.sendSuccess(() -> LocalizationHelper.getPrefixedMessage(
-                "inrp.admin.config.op_bypass",
-                statusComponent
-        ).withStyle(ChatFormatting.GREEN), true);
-
-        return 1;
-    }
+    // --------------------------------------------------------------------- Lives
 
     private static int setLives(CommandSourceStack source, Collection<ServerPlayer> targets, int amount) {
-        if (targets.size() >= CONFIRMATION_THRESHOLD && requiresConfirmation(source)) {
-            String desc = LocalizationHelper.format("inrp.admin.confirm.desc.setlives", targets.size(), amount);
-            ConfirmationManager.requestConfirmation(source, getAdminUUID(source), desc, () -> executeSetLives(source, targets, amount));
-            return 0;
-        }
-        return executeSetLives(source, targets, amount);
+        return stage(source, targets,
+                LocalizationHelper.format("inrp.admin.confirm.desc.setlives", targets.size(), amount),
+                players -> executeSetLives(source, players, amount));
     }
 
-    private static int executeSetLives(CommandSourceStack source, Collection<ServerPlayer> targets, int amount) {
-        int finalAmount = (amount <= 0 && amount != -1) ? -1 : amount;
+    private static int executeSetLives(CommandSourceStack source, List<ServerPlayer> targets, int amount) {
+        // Anything at or below zero other than the explicit -1 sentinel also means "no limit".
+        int maxLives = amount <= 0 ? InRPAttachments.UNLIMITED_LIVES : amount;
+
         for (ServerPlayer player : targets) {
-            InRPAttachments.setMaxLives(player, finalAmount);
-            if (finalAmount > 0 && InRPAttachments.getDeathCount(player) < finalAmount && InRPAttachments.isDead(player)) {
-                reviveSinglePlayer(player);
+            InRPAttachments.setMaxLives(player, maxLives);
+            // Granting a finite limit the player is still within brings them back; "unlimited" is left alone so an
+            // admin can raise the cap without implicitly reviving an eliminated character.
+            if (maxLives > 0 && InRPAttachments.isDead(player) && !InRPAttachments.hasRunOutOfLives(player)) {
+                LivesEventHandler.revive(player);
             }
         }
 
-        String amountStr = finalAmount == -1 ? LocalizationHelper.getRaw("inrp.lives.unlimited") : String.valueOf(finalAmount);
-        source.sendSuccess(() -> LocalizationHelper.getPrefixedMessage(
-                "inrp.admin.lives.set.success",
-                amountStr,
-                targets.size()
-        ).withStyle(ChatFormatting.GOLD), true);
-
-        return targets.size();
-    }
-
-    private static int reviveGameProfiles(CommandSourceStack source, Collection<GameProfile> profiles) {
-        int count = 0;
-        for (GameProfile profile : profiles) {
-            InRPLivesManager.unmarkDead(profile.getId());
-            ServerPlayer player = source.getServer().getPlayerList().getPlayer(profile.getId());
-            if (player != null) {
-                reviveSinglePlayer(player);
-            }
-            count++;
-        }
-
-        final int finalCount = count;
-        source.sendSuccess(() -> LocalizationHelper.getPrefixedMessage(
-                "inrp.admin.lives.revive.success",
-                finalCount
-        ).withStyle(ChatFormatting.GREEN), true);
-
-        return count;
-    }
-
-    private static void reviveSinglePlayer(ServerPlayer player) {
-        InRPAttachments.setDead(player, false);
-        InRPAttachments.setDeathCount(player, 0);
-        InRPLivesManager.unmarkDead(player.getUUID());
-        if (player.gameMode.getGameModeForPlayer() == GameType.SPECTATOR) {
-            player.setGameMode(GameType.SURVIVAL);
-        }
-        ScoreboardHandler.updatePlayerScoreboard(player);
-        ScoreboardHandler.refreshPlayerTabList(player);
-        player.sendSystemMessage(LocalizationHelper.getPrefixedMessage("inrp.lives.revived_notification").withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD));
+        String amountText = maxLives == InRPAttachments.UNLIMITED_LIVES
+                ? LocalizationHelper.getRaw("inrp.lives.unlimited")
+                : String.valueOf(maxLives);
+        int affected = targets.size();
+        source.sendSuccess(() -> LocalizationHelper
+                .getPrefixedMessage("inrp.admin.lives.set.success", amountText, affected)
+                .withStyle(ChatFormatting.GOLD), true);
+        return affected;
     }
 
     private static int setDeaths(CommandSourceStack source, Collection<ServerPlayer> targets, int amount) {
-        if (targets.size() >= CONFIRMATION_THRESHOLD && requiresConfirmation(source)) {
-            String desc = LocalizationHelper.format("inrp.admin.confirm.desc.setdeaths", targets.size(), amount);
-            ConfirmationManager.requestConfirmation(source, getAdminUUID(source), desc, () -> executeSetDeaths(source, targets, amount));
-            return 0;
-        }
-        return executeSetDeaths(source, targets, amount);
+        return stage(source, targets,
+                LocalizationHelper.format("inrp.admin.confirm.desc.setdeaths", targets.size(), amount),
+                players -> executeSetDeaths(source, players, amount));
     }
 
-    private static int executeSetDeaths(CommandSourceStack source, Collection<ServerPlayer> targets, int amount) {
+    private static int executeSetDeaths(CommandSourceStack source, List<ServerPlayer> targets, int amount) {
         for (ServerPlayer player : targets) {
             InRPAttachments.setDeathCount(player, amount);
-            if (InRPAttachments.hasLivesLimit(player) && amount >= InRPAttachments.getMaxLives(player)) {
-                InRPAttachments.setDead(player, true);
-                InRPLivesManager.markDead(player.getUUID());
-                if (player.gameMode.getGameModeForPlayer() != GameType.SPECTATOR) {
-                    player.setGameMode(GameType.SPECTATOR);
-                }
-            } else if (InRPAttachments.isDead(player) && InRPAttachments.hasLivesLimit(player) && amount < InRPAttachments.getMaxLives(player)) {
-                InRPAttachments.setDead(player, false);
-                InRPLivesManager.unmarkDead(player.getUUID());
-                if (player.gameMode.getGameModeForPlayer() == GameType.SPECTATOR) {
-                    player.setGameMode(GameType.SURVIVAL);
-                }
+
+            if (InRPAttachments.hasRunOutOfLives(player)) {
+                LivesEventHandler.markEliminated(player);
+                LivesEventHandler.enforceEliminationState(player);
+            } else if (InRPAttachments.isDead(player)) {
+                // Back below the limit: lift the elimination but keep the death count the admin just set.
+                LivesEventHandler.clearElimination(player, false);
+            } else {
+                ScoreboardHandler.refreshPlayerTabList(player);
             }
-            ScoreboardHandler.updatePlayerScoreboard(player);
-            ScoreboardHandler.refreshPlayerTabList(player);
         }
 
-        source.sendSuccess(() -> LocalizationHelper.getPrefixedMessage(
-                "inrp.admin.lives.setdeaths.success",
-                amount,
-                targets.size()
-        ).withStyle(ChatFormatting.GOLD), true);
+        int affected = targets.size();
+        source.sendSuccess(() -> LocalizationHelper
+                .getPrefixedMessage("inrp.admin.lives.setdeaths.success", amount, affected)
+                .withStyle(ChatFormatting.GOLD), true);
+        return affected;
+    }
 
-        return targets.size();
+    /**
+     * Revives by game profile rather than entity selector, so offline players can be revived too: their UUID is
+     * removed from the world-level store and the login handler restores them on their next connection.
+     */
+    private static int revive(CommandSourceStack source, Collection<GameProfile> profiles) {
+        List<UUID> ids = new ArrayList<>(profiles.size());
+        for (GameProfile profile : profiles) {
+            if (profile.getId() != null) {
+                ids.add(profile.getId());
+            }
+        }
+
+        // Single disk write for the whole batch.
+        InRPLivesManager.unmarkDeadAll(ids);
+
+        PlayerList playerList = source.getServer().getPlayerList();
+        for (UUID id : ids) {
+            ServerPlayer player = playerList.getPlayer(id);
+            if (player != null) {
+                LivesEventHandler.revive(player);
+            }
+        }
+
+        int affected = ids.size();
+        source.sendSuccess(() -> LocalizationHelper
+                .getPrefixedMessage("inrp.admin.lives.revive.success", affected)
+                .withStyle(ChatFormatting.GREEN), true);
+        return affected;
     }
 
     private static int setLivesAction(CommandSourceStack source, String action) {
         if (InRPConfig.LIVES_ACTION.get().equalsIgnoreCase(action)) {
-            source.sendFailure(LocalizationHelper.getPrefixedMessage(
-                    "inrp.admin.lives.action.already",
-                    action
-            ).withStyle(ChatFormatting.RED));
+            source.sendFailure(LocalizationHelper.getPrefixedMessage("inrp.admin.lives.action.already", action)
+                    .withStyle(ChatFormatting.RED));
             return 0;
         }
 
         InRPConfig.LIVES_ACTION.set(action);
         InRPConfig.SPEC.save();
 
-        source.sendSuccess(() -> LocalizationHelper.getPrefixedMessage(
-                "inrp.admin.lives.action.success",
-                action
-        ).withStyle(ChatFormatting.GREEN), true);
-
+        source.sendSuccess(() -> LocalizationHelper.getPrefixedMessage("inrp.admin.lives.action.success", action)
+                .withStyle(ChatFormatting.GREEN), true);
         return 1;
     }
 
+    /** @param targets explicit targets, or {@code null} to apply to every online player. */
     private static int applyDefaultLives(CommandSourceStack source, Collection<ServerPlayer> targets) {
-        int defaultMax = InRPConfig.DEFAULT_MAX_LIVES.get();
-        if (defaultMax <= 0) {
-            source.sendFailure(LocalizationHelper.getPrefixedMessage(
-                    "inrp.admin.lives.applydefault.disabled"
-            ).withStyle(ChatFormatting.RED));
+        int defaultMaxLives = InRPConfig.DEFAULT_MAX_LIVES.get();
+        if (defaultMaxLives <= 0) {
+            source.sendFailure(LocalizationHelper.getPrefixedMessage("inrp.admin.lives.applydefault.disabled")
+                    .withStyle(ChatFormatting.RED));
             return 0;
         }
 
         Collection<ServerPlayer> players = targets != null ? targets : source.getServer().getPlayerList().getPlayers();
-
-        if (players.size() >= CONFIRMATION_THRESHOLD && requiresConfirmation(source)) {
-            String desc = LocalizationHelper.format("inrp.admin.confirm.desc.applydefault", players.size(), defaultMax);
-            final Collection<ServerPlayer> finalPlayers = players;
-            ConfirmationManager.requestConfirmation(source, getAdminUUID(source), desc, () -> executeApplyDefaultLives(source, finalPlayers, defaultMax));
-            return 0;
-        }
-        return executeApplyDefaultLives(source, players, defaultMax);
+        return stage(source, players,
+                LocalizationHelper.format("inrp.admin.confirm.desc.applydefault", players.size(), defaultMaxLives),
+                resolved -> executeApplyDefaultLives(source, resolved, defaultMaxLives));
     }
 
-    private static int executeApplyDefaultLives(CommandSourceStack source, Collection<ServerPlayer> players, int defaultMax) {
-        for (ServerPlayer player : players) {
-            InRPAttachments.setMaxLives(player, defaultMax);
-            if (InRPAttachments.getDeathCount(player) < defaultMax && InRPAttachments.isDead(player)) {
-                reviveSinglePlayer(player);
+    private static int executeApplyDefaultLives(CommandSourceStack source, List<ServerPlayer> targets, int defaultMaxLives) {
+        for (ServerPlayer player : targets) {
+            InRPAttachments.setMaxLives(player, defaultMaxLives);
+            if (InRPAttachments.isDead(player) && !InRPAttachments.hasRunOutOfLives(player)) {
+                LivesEventHandler.revive(player);
             }
         }
 
-        String amountStr = String.valueOf(defaultMax);
-        final int count = players.size();
-        source.sendSuccess(() -> LocalizationHelper.getPrefixedMessage(
-                "inrp.admin.lives.applydefault.success",
-                amountStr,
-                count
-        ).withStyle(ChatFormatting.GOLD), true);
+        String amountText = String.valueOf(defaultMaxLives);
+        int affected = targets.size();
+        source.sendSuccess(() -> LocalizationHelper
+                .getPrefixedMessage("inrp.admin.lives.applydefault.success", amountText, affected)
+                .withStyle(ChatFormatting.GOLD), true);
+        return affected;
+    }
 
-        return count;
+    // -------------------------------------------------------------- Confirmation
+
+    /**
+     * Runs {@code action} immediately for small selections and for console sources, or stages it behind
+     * {@code /rpadmin confirm} when it would affect {@value #CONFIRMATION_THRESHOLD} players or more.
+     */
+    private static int stage(CommandSourceStack source, Collection<ServerPlayer> targets, String description,
+                             TargetAction action) {
+        UUID adminUUID = adminUUID(source);
+        if (targets.size() < CONFIRMATION_THRESHOLD || adminUUID == null) {
+            return action.run(List.copyOf(targets));
+        }
+
+        List<UUID> targetIds = new ArrayList<>(targets.size());
+        for (ServerPlayer target : targets) {
+            targetIds.add(target.getUUID());
+        }
+
+        ConfirmationManager.requestConfirmation(source, adminUUID, description,
+                () -> action.run(resolveOnline(source, targetIds)));
+        return 0;
     }
 
     private static int executeConfirm(CommandSourceStack source) {
-        UUID adminUUID = getAdminUUID(source);
-        if (adminUUID == null || !ConfirmationManager.confirm(adminUUID)) {
-            source.sendFailure(LocalizationHelper.getPrefixedMessage(
-                    "inrp.admin.confirm.expired"
-            ).withStyle(ChatFormatting.RED));
+        if (!ConfirmationManager.confirm(adminUUID(source))) {
+            source.sendFailure(LocalizationHelper.getPrefixedMessage("inrp.admin.confirm.expired")
+                    .withStyle(ChatFormatting.RED));
             return 0;
         }
-        source.sendSuccess(() -> LocalizationHelper.getPrefixedMessage(
-                "inrp.admin.confirm.success"
-        ).withStyle(ChatFormatting.GREEN), true);
+        source.sendSuccess(() -> LocalizationHelper.getPrefixedMessage("inrp.admin.confirm.success")
+                .withStyle(ChatFormatting.GREEN), true);
         return 1;
     }
 
-    private static boolean requiresConfirmation(CommandSourceStack source) {
-        UUID uuid = getAdminUUID(source);
-        return uuid != null && !ConfirmationManager.hasPending(uuid);
+    /** Re-resolves staged targets, dropping anyone who disconnected while the confirmation was pending. */
+    private static List<ServerPlayer> resolveOnline(CommandSourceStack source, List<UUID> targetIds) {
+        PlayerList playerList = source.getServer().getPlayerList();
+        List<ServerPlayer> online = new ArrayList<>(targetIds.size());
+        for (UUID id : targetIds) {
+            ServerPlayer player = playerList.getPlayer(id);
+            if (player != null) {
+                online.add(player);
+            }
+        }
+        return online;
     }
 
-    private static UUID getAdminUUID(CommandSourceStack source) {
-        if (source.getEntity() instanceof ServerPlayer player) {
-            return player.getUUID();
-        }
-        return null;
+    /** @return the executing player's UUID, or {@code null} for the console and command blocks. */
+    private static UUID adminUUID(CommandSourceStack source) {
+        return source.getEntity() instanceof ServerPlayer player ? player.getUUID() : null;
     }
 
     private static int showAdminHelp(CommandSourceStack source) {
-        Component help = Component.empty()
-                .append(LocalizationHelper.getPrefixedMessage("inrp.admin.help.header").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
-                .append(Component.literal("\n"))
-                .append(LocalizationHelper.getMessage("inrp.admin.help.set").withStyle(ChatFormatting.GRAY))
-                .append(Component.literal("\n"))
-                .append(LocalizationHelper.getMessage("inrp.admin.help.config").withStyle(ChatFormatting.GRAY))
-                .append(Component.literal("\n"))
-                .append(LocalizationHelper.getMessage("inrp.admin.help.lives_set").withStyle(ChatFormatting.GRAY))
-                .append(Component.literal("\n"))
-                .append(LocalizationHelper.getMessage("inrp.admin.help.lives_revive").withStyle(ChatFormatting.GRAY))
-                .append(Component.literal("\n"))
-                .append(LocalizationHelper.getMessage("inrp.admin.help.lives_setdeaths").withStyle(ChatFormatting.GRAY))
-                .append(Component.literal("\n"))
-                .append(LocalizationHelper.getMessage("inrp.admin.help.lives_action").withStyle(ChatFormatting.GRAY))
-                .append(Component.literal("\n"))
-                .append(LocalizationHelper.getMessage("inrp.admin.help.lives_applydefault").withStyle(ChatFormatting.GRAY))
-                .append(Component.literal("\n"))
-                .append(LocalizationHelper.getMessage("inrp.admin.help.confirm").withStyle(ChatFormatting.GRAY))
-                .append(Component.literal("\n"))
-                .append(LocalizationHelper.getMessage("inrp.admin.help.spy").withStyle(ChatFormatting.GRAY));
+        Component help = HelpText.build("inrp.admin.help.header", HELP_ENTRIES);
         source.sendSuccess(() -> help, false);
         return 1;
     }

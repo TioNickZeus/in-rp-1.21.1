@@ -1,5 +1,20 @@
+# Later rules win, so the catch-all comes first and the specific overrides follow.
+
+# Normalise text files in the repository; check them out with the platform's native endings.
+* text=auto
+
 # Disable autocrlf on generated files, they always generate with LF
 # Add any extra files or paths here to make git stop saying they
 # are changed when only line endings change.
 src/generated/**/.cache/* text eol=lf
 src/generated/**/*.json text eol=lf
+
+# Scripts whose line endings are load-bearing.
+*.sh text eol=lf
+gradlew text eol=lf
+*.bat text eol=crlf
+gradlew.bat text eol=crlf
+
+# Binary assets git must never touch.
+*.jar binary
+*.png binary

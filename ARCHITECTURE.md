@@ -2,7 +2,7 @@
 
 > **Single Source of Truth (SSOT)** for the mod's technical architecture and design decisions.
 > Every AI, contributor, or maintainer must read this document before modifying any code.
-> **Last updated**: September 2026 — version 1.0.6
+> **Last updated**: September 2026 — unreleased (post-1.0.6 hardening pass)
 
 ---
 
@@ -56,7 +56,9 @@ com.tio.inrp/
 │   ├── RPGameplayRulesHandler.java ← PvP, block break/place restrictions
 │   └── ScoreboardHandler.java   ← Teams `inrp_active` & `inrp_afk`, unified nametag & chat suffixes
 └── util/
+    ├── ChatFormat.java          ← Shared sanitisation/layout for the [L], [G] and [SPY:*] channels
     ├── ConfirmationManager.java ← Bulk action confirmation (10s TTL)
+    ├── HelpText.java            ← Builds the /rp help and /rpadmin help listings
     └── LocalizationHelper.java  ← Server-side translations with en_us fallback
 
 src/main/resources/assets/inrp/lang/
@@ -84,11 +86,23 @@ All commands are registered in `InRP.onRegisterCommands` via `RegisterCommandsEv
 
 `InRPConfig` uses `ModConfigSpec.Builder` with TOML sections (`general`, `rules`, `roll`, `lives`, `afk`, `chat`). Registered as `ModConfig.Type.SERVER`.
 
+Raw `ConfigValue`s are public for compatibility, but **prefer the sanitising accessors** — they are the only place
+where free-form or interdependent values are normalised:
+
+| Accessor | Purpose |
+|:---|:---|
+| `rpSuffix()` | `nametagSuffix`, falling back to `chatSuffix` when empty; stripped and length-capped at 64 chars |
+| `afkTimeoutMillis()` | `afkTimeoutSeconds` in milliseconds |
+| `afkKickMillis()` | `afkKickSeconds` in milliseconds, never below the AFK timeout; `-1` when disabled |
+| `localChatRadiusSq()` | Pre-squared radius for `distanceToSqr` comparisons |
+| `eliminatesByKick()` | Whether `livesAction` is `kick` |
+| `logSuspiciousValues()` | Warns at startup about valid-but-probably-wrong combinations |
+
 | Section | Key | Type | Default | Validation |
 |:---|:---|:---|:---|:---|
-| general | `serverLanguage` | String | `"en_us"` | N/A |
-| general | `chatSuffix` | String | `"[RP]"` | N/A |
-| general | `nametagSuffix` | String | `" [in RP]"` | N/A |
+| general | `serverLanguage` | String | `"en_us"` | Must match `[a-z0-9_-]{2,32}`, else `en_us` |
+| general | `nametagSuffix` | String | `" [in RP]"` | Stripped, capped at 64 chars; `""` disables the marker |
+| general | `chatSuffix` | String | `"[RP]"` | Fallback used only when `nametagSuffix` is empty |
 | rules | `pvpAllowedInRP` | bool | `true` | N/A |
 | rules | `blockBreakAllowedInRP` | bool | `true` | N/A |
 | rules | `blockPlaceAllowedInRP` | bool | `true` | N/A |
@@ -139,8 +153,8 @@ An auxiliary store (`inrp_dead_players.json` in world folder) that tracks UUIDs 
 |:---|:---|:---|
 | `AFKEventHandler` | `ServerTickEvent.Post`, `PlayerTickEvent.Post`, `ServerChatEvent`, `PlayerLoggedIn`, `PlayerLoggedOut` | Inactivity timer (100-tick interval), instant wake-up, optional kick |
 | `ChatEventHandler` | `ServerChatEvent`, `CommandEvent` | Proximity local chat routing, silent notification, console logging, chat spy on local & PMs |
-| `LivesEventHandler` | `LivingDeath`, `PlayerRespawn`, `PlayerLoggedIn`, `TabListNameFormat` | All lives logic, elimination, revive, and `[DEAD]` / `[AFK]` tab tags |
-| `RPGameplayRulesHandler` | `AttackEntity`, `BlockBreak`, `EntityPlace` | Cancels forbidden actions for RP players, with OP bypass |
+| `LivesEventHandler` | `LivingDeath` (priority `LOWEST`), `PlayerRespawn`, `PlayerLoggedIn`, `TabListNameFormat` | All lives logic, elimination, revive, and `[DEAD]` / `[AFK]` tab tags |
+| `RPGameplayRulesHandler` | `AttackEntity`, `LivingIncomingDamage`, `BlockBreak`, `EntityPlace` | Cancels forbidden actions for RP players, with OP bypass. `AttackEntity` stops melee early (before knockback); `LivingIncomingDamage` closes indirect PvP (arrows, potions, TNT) |
 | `ScoreboardHandler` | `PlayerLoggedIn`, `PlayerRespawn`, `PlayerChangedDimension` | Manages `inrp_active` and `inrp_afk` teams for unified nametag and chat suffixes |
 
 ### 2.5 `util/` — Utilities
@@ -155,13 +169,21 @@ Server-side translation system. Loads JSONs from `assets/inrp/lang/` and exposes
 
 **Fallback chain**: active language → `en_us` → literal key.
 
+The language code is validated before it reaches the resource path (it would otherwise allow classpath traversal),
+and translation maps are **immutable and swapped atomically** on reload, so the server thread can never read a
+half-populated map.
+
 #### `ConfirmationManager`
 
 Manages pending actions for bulk commands (≥5 targets):
-- `ConcurrentHashMap<UUID, PendingAction>` with 10-second TTL
+- `ConcurrentHashMap<UUID, PendingAction>` with 10-second TTL, measured with the monotonic `Util.getMillis()`
 - Admin receives a message with clickable `[CONFIRM]` button that runs `/rpadmin confirm`
 - Console commands (no UUID) always execute immediately
-- Automatic cleanup of expired entries on each `requestConfirmation`
+- Automatic cleanup of expired entries on each `requestConfirmation`; a new request replaces the previous one, so
+  a pending action can never let the next bulk command skip its own confirmation
+- Targets are staged as **UUIDs**, not `ServerPlayer` references, and re-resolved when the action runs — writing
+  to a player who disconnected during the 10-second window would silently discard the change
+- Cleared on player logout and on server shutdown
 
 ---
 
@@ -178,10 +200,22 @@ InRP.<init>                           ← Constructor called by FML
 
 InRP.onServerStarting                  ← ServerStartingEvent
  ├─ LocalizationHelper.reloadTranslations()
+ ├─ InRPConfig.logSuspiciousValues()  ← Warns about odd-but-valid config combinations
  └─ InRPLivesManager.init(server)     ← Loads inrp_dead_players.json
 
 InRP.onRegisterCommands                ← RegisterCommandsEvent
- └─ Registers /rp, /afk, /roll, /rpadmin, /lives
+ └─ Registers /rp, /afk, /roll, /rpadmin, /lives, /g, /global, /chatspy
+
+InRP.onPlayerLoggedOut                 ← PlayerLoggedOutEvent
+ ├─ GlobalChatCommand.clearCooldown(uuid)
+ └─ ConfirmationManager.clear(uuid)
+
+InRP.onServerStopped                   ← ServerStoppedEvent
+ ├─ InRPLivesManager.shutdown()       ← One JVM can load several worlds in a row: nothing
+ ├─ AFKEventHandler.reset()             may carry over into the next one
+ ├─ AFKCommand.reset()
+ ├─ GlobalChatCommand.reset()
+ └─ ConfirmationManager.reset()
 ```
 
 ### 3.2 AFK Lifecycle and Wake-Up Flow
@@ -189,14 +223,18 @@ InRP.onRegisterCommands                ← RegisterCommandsEvent
 ```
 Inactivity Timer (ServerTickEvent.Post — every 100 ticks / 5s)
  │
- ├─ idleMillis >= kickTimeoutMillis (if > 0)?
- │    └─ YES → player.connection.disconnect(...)
+ ├─ [afkEnabled == false] → release anyone still flagged, then RETURN
  │
- └─ idleMillis >= afkTimeoutMillis?
-      └─ YES && !isAFK(player) →
-           ├─ setAFK(player, true)
-           ├─ [autoDisableRPOnAFK] → setInRP(player, false)
-           └─ updatePlayerScoreboard() + refreshPlayerTabList() [Silent entry]
+ ├─ [!isAFK(player)] idleMillis >= afkTimeoutMillis?
+ │    └─ YES → AFKEventHandler.enterAFK(player) [Silent entry]
+ │             ├─ setAFK(player, true)
+ │             ├─ [autoDisableRPOnAFK] → setInRP(player, false)
+ │             └─ trackAFK() + updatePlayerScoreboard()
+ │
+ └─ [isAFK(player)] idleMillis >= afkKickMillis (if > 0)?
+      └─ YES → player.connection.disconnect(...)
+               Only AFK players are kicked, so afkKickSeconds is clamped up to afkTimeoutSeconds.
+               The player list is snapshotted while the kick is enabled, since disconnecting mutates it.
 
 Voluntary Command: /afk
  │
@@ -207,11 +245,15 @@ Voluntary Command: /afk
 Wake-Up Detection (PlayerTickEvent.Post / ServerChatEvent)
  │
  ├─ [Guard] !isAFK(player) → RETURN (zero overhead)
- └─ [If AFK and recent action detected (<1500ms)] →
+ └─ [If AFK and the pose changed after the 1s grace window] → wakeUp(player)
       ├─ setAFK(player, false)
+      ├─ player.resetLastActionTime()   ← Otherwise the next sweep re-flags them immediately
       ├─ ScoreboardHandler.updatePlayerScoreboard(player)
       ├─ Action bar message: "You are no longer AFK"
       └─ Sound feedback (UI_BUTTON_CLICK)
+
+`wakeUp` returns immediately when the player is not AFK, so the overlapping wake-up sources (per-tick pose check,
+chat, melee, right-click, `/afk`, `/g`) can all call it without producing duplicate feedback.
 ```
 
 ### 3.3 Death and Lives Flow
@@ -250,7 +292,8 @@ Admin executes: /rpadmin set @a off
  │
  ├─ targets.size() >= CONFIRMATION_THRESHOLD (5)?
  │    ├─ YES → ConfirmationManager.requestConfirmation(...)
- │    │         ├─ Stores PendingAction with Runnable + timestamp
+ │    │         ├─ Stores PendingAction with Runnable + timestamp, replacing any previous one
+ │    │         ├─ Captures target UUIDs (re-resolved on execution, never stale ServerPlayers)
  │    │         └─ Sends yellow message with clickable [CONFIRM]
  │    │
  │    └─ NO → Executes immediately
@@ -296,13 +339,17 @@ Admin executes: /rpadmin set @a off
 - **Null checks**: Every `Player` access in `InRPAttachments` methods checks for `null` before operating.
 - **Input validation**: Commands use Brigadier bounds (`IntegerArgumentType.integer(-1, 100000)`). Configs use `defineInRange` or `defineInList` — never `define()` for values with a finite domain.
 - **Fallbacks**: `LocalizationHelper.getRaw()` never returns `null` — returns the literal key if all else fails. `LocalizationHelper.format()` catches `Exception` and returns the raw string.
-- **No crashes**: I/O errors in `InRPLivesManager` are logged as `LOGGER.error()` and silenced — the server **must never** crash because of this mod.
+- **No crashes**: I/O errors in `InRPLivesManager` are logged as `LOGGER.error()` and silenced — the server **must never** crash because of this mod. The same applies to player input: `/roll` bounds every digit run it parses so no malformed argument can escape as a raw exception.
+- **Sanitize free-form config**: any config string that reaches a resource path, a packet or a file **MUST** be validated and length-capped on read (`InRPConfig.rpSuffix()`, `LocalizationHelper`'s language check). Never trust a hand-edited TOML.
+- **Monotonic time**: elapsed-time comparisons (cooldowns, TTLs, idle timers) **MUST** use `Util.getMillis()`, never `System.currentTimeMillis()` — the latter jumps when the host clock is corrected. It is also the clock vanilla stamps `lastActionTime` with.
+- **Re-check permissions at delivery**: staff toggles persist in save data, so a permission level checked when the toggle was flipped may no longer hold. `ChatFormat.isActiveChatSpy` re-checks OP level for every message.
 
 ### 4.4 Thread Safety
 
 - `InRPLivesManager` uses `synchronized(LOCK)` on **all** accesses to `DEAD_PLAYERS`.
 - `ConfirmationManager` uses `ConcurrentHashMap` — safe for parallel access from multiple commands.
-- `LocalizationHelper` reloads translations synchronously on the server's main thread (config event).
+- `LocalizationHelper` holds **immutable** maps and swaps the reference atomically on reload, so a concurrent reader can never observe a partially populated map.
+- `AFKEventHandler`, `AFKCommand` and `GlobalChatCommand` keep their per-player transient state in `ConcurrentHashMap`s.
 
 ### 4.5 Server-Side Only
 
@@ -314,6 +361,14 @@ Admin executes: /rpadmin set @a off
 
 - All JSON file writes **MUST** follow the pattern `write-to-temp → Files.move(REPLACE_EXISTING)`.
 - **NEVER** write directly to the destination file — a crash during write would corrupt the data.
+- **ALWAYS** read and write text with an explicit charset (`StandardCharsets.UTF_8`); the platform default varies by host.
+- Skip the write entirely when the in-memory state did not change, and batch bulk edits into a single write.
+
+### 4.7 No State Across Worlds
+
+A single JVM can load several worlds in sequence (single player, or a server reload). Every `static` collection
+holding world- or session-scoped state **MUST** expose a reset hook that `InRP.onServerStopped` calls, otherwise
+cooldowns, pending confirmations or the eliminated-player list leak into the next world.
 
 ---
 

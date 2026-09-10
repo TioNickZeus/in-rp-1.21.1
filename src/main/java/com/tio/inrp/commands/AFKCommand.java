@@ -3,9 +3,10 @@ package com.tio.inrp.commands;
 import com.mojang.brigadier.CommandDispatcher;
 import com.tio.inrp.config.InRPConfig;
 import com.tio.inrp.data.InRPAttachments;
-import com.tio.inrp.events.ScoreboardHandler;
+import com.tio.inrp.events.AFKEventHandler;
 import com.tio.inrp.util.LocalizationHelper;
 import net.minecraft.ChatFormatting;
+import net.minecraft.Util;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
@@ -17,15 +18,36 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class AFKCommand {
+/**
+ * {@code /afk} &mdash; voluntary AFK toggle.
+ *
+ * <p>Entering AFK is announced server-wide, unlike the automatic inactivity sweep, which is silent. A short
+ * per-player cooldown keeps the announcement from being used as a chat spam vector.
+ */
+public final class AFKCommand {
 
     private static final long COOLDOWN_MS = 3000L;
     private static final Map<UUID, Long> COOLDOWNS = new ConcurrentHashMap<>();
+
+    private AFKCommand() {
+    }
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("afk")
                 .executes(context -> toggleAFK(context.getSource()))
         );
+    }
+
+    /** Forgets a player's cooldown, e.g. when they disconnect. */
+    public static void clearCooldown(UUID uuid) {
+        if (uuid != null) {
+            COOLDOWNS.remove(uuid);
+        }
+    }
+
+    /** Drops every cooldown. Called on server shutdown so nothing leaks into the next world load. */
+    public static void reset() {
+        COOLDOWNS.clear();
     }
 
     private static int toggleAFK(CommandSourceStack source) {
@@ -39,42 +61,35 @@ public class AFKCommand {
             return 0;
         }
 
-        long now = System.currentTimeMillis();
-        UUID uuid = player.getUUID();
-        Long lastUsed = COOLDOWNS.get(uuid);
-        if (lastUsed != null && (now - lastUsed) < COOLDOWN_MS) {
+        if (!tryUseCooldown(player.getUUID())) {
             source.sendFailure(LocalizationHelper.getPrefixedMessage("inrp.afk.cooldown").withStyle(ChatFormatting.RED));
             return 0;
         }
-        COOLDOWNS.put(uuid, now);
 
-        boolean currentAFK = InRPAttachments.isAFK(player);
-        if (!currentAFK) {
-            // Enter AFK
-            InRPAttachments.setAFK(player, true);
-            if (InRPConfig.AUTO_DISABLE_RP_ON_AFK.get()) {
-                InRPAttachments.setInRP(player, false);
-            }
-            com.tio.inrp.events.AFKEventHandler.trackAFK(player);
-            ScoreboardHandler.updatePlayerScoreboard(player);
-
-            // Global chat announcement for voluntary /afk
-            Component broadcastMsg = LocalizationHelper.getPrefixedMessage("inrp.afk.enter.broadcast", player.getScoreboardName())
-                    .withStyle(ChatFormatting.GRAY);
-            player.server.getPlayerList().broadcastSystemMessage(broadcastMsg, false);
-
-            player.playNotifySound(SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.PLAYERS, 0.7f, 0.9f);
-        } else {
-            // Exit AFK
-            com.tio.inrp.events.AFKEventHandler.wakeUp(player);
+        if (InRPAttachments.isAFK(player)) {
+            AFKEventHandler.wakeUp(player);
+            return 1;
         }
 
+        AFKEventHandler.enterAFK(player);
+
+        Component announcement = LocalizationHelper
+                .getPrefixedMessage("inrp.afk.enter.broadcast", player.getScoreboardName())
+                .withStyle(ChatFormatting.GRAY);
+        player.server.getPlayerList().broadcastSystemMessage(announcement, false);
+
+        player.playNotifySound(SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.PLAYERS, 0.7F, 0.9F);
         return 1;
     }
 
-    public static void clearCooldown(UUID uuid) {
-        if (uuid != null) {
-            COOLDOWNS.remove(uuid);
+    /** @return {@code true} when the command may run, recording the use; {@code false} while still cooling down. */
+    private static boolean tryUseCooldown(UUID uuid) {
+        long now = Util.getMillis();
+        Long lastUsed = COOLDOWNS.get(uuid);
+        if (lastUsed != null && now - lastUsed < COOLDOWN_MS) {
+            return false;
         }
+        COOLDOWNS.put(uuid, now);
+        return true;
     }
 }

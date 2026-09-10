@@ -15,7 +15,7 @@ loaderVersion="${loader_version_range}" #mandatory
 license="${mod_license}"
 
 # A URL to refer people to when problems occur with this mod
-#issueTrackerURL="https://change.me.to.your.issue.tracker.example.invalid/" #optional
+issueTrackerURL="https://github.com/TioNickZeus/in-rp-1.21.1/issues" #optional
 
 # A list of mods - how many allowed here is determined by the individual mod loader
 [[mods]] #mandatory
@@ -39,10 +39,10 @@ displayURL="https://github.com/TioNickZeus/in-rp-1.21.1" #optional
 #logoFile="icon.png" #optional
 
 # A text field displayed in the mod UI
-credits="Created by TioNickZeus" #optional
+credits="Created by ${mod_authors}" #optional
 
 # The authors of the mod, displayed in the mod UI (optional)
-authors="TioNickZeus"
+authors="${mod_authors}"
 
 # The description text for the mod (multi line!) (#mandatory)
 description='''
