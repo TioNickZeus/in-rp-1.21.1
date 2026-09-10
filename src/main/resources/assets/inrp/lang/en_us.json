@@ -40,6 +40,7 @@
   "inrp.lives.info_status": "Status: %s",
   "inrp.lives.eliminated.broadcast": "%s has run out of lives and is permanently dead!",
   "inrp.lives.spectator_message": "Your lives have run out! You are now in Spectator mode until an admin revives you.",
+  "inrp.lives.host_spectator_message": "Your lives have run out! Since you are hosting this Singleplayer/LAN game, you were placed in Spectator mode to keep the server online for your friends.",
   "inrp.lives.kick_message": "Your lives have run out! You have been eliminated from RP.\nPlease wait for an administrator to revive your character.",
   "inrp.lives.revived_notification": "You have been revived by an administrator! Welcome back.",
   

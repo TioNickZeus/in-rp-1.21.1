@@ -127,6 +127,18 @@ public final class LivesEventHandler {
         }
 
         if (InRPConfig.eliminatesByKick()) {
+            if (player.server.isSingleplayerOwner(player.getGameProfile())) {
+                if (player.gameMode.getGameModeForPlayer() != GameType.SPECTATOR) {
+                    player.setGameMode(GameType.SPECTATOR);
+                }
+                player.displayClientMessage(
+                        LocalizationHelper.getPrefixedMessage("inrp.lives.host_spectator_message")
+                                .withStyle(ChatFormatting.DARK_RED),
+                        false);
+                ScoreboardHandler.updatePlayerScoreboard(player);
+                return;
+            }
+
             player.connection.disconnect(LocalizationHelper.getMessage("inrp.lives.kick_message")
                     .withStyle(ChatFormatting.RED, ChatFormatting.BOLD));
             return;

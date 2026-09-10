@@ -95,6 +95,9 @@ public final class LocalizationHelper {
     }
 
     private static String resolveConfiguredLanguage() {
+        if (!InRPConfig.SPEC.isLoaded()) {
+            return FALLBACK_LANGUAGE;
+        }
         String configured;
         try {
             configured = InRPConfig.SERVER_LANGUAGE.get();

@@ -40,6 +40,7 @@
   "inrp.lives.info_status": "Status: %s",
   "inrp.lives.eliminated.broadcast": "%s esgotou todas as suas vidas e está permanentemente morto!",
   "inrp.lives.spectator_message": "Suas vidas acabaram! Você está no modo Espectador até que um administrador reviva você.",
+  "inrp.lives.host_spectator_message": "Suas vidas acabaram! Como você é o anfitrião (Host) desta partida Singleplayer/LAN, você foi colocado no modo Espectador para manter o servidor aberto para seus amigos.",
   "inrp.lives.kick_message": "Suas vidas acabaram! Você foi eliminado do RP.\nAguarde um administrador reviver seu personagem.",
   "inrp.lives.revived_notification": "Você foi revivido por um administrador! Bem-vindo de volta.",
 
