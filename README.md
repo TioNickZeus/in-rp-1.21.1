@@ -221,6 +221,7 @@ The resulting JAR file will be located in `build/libs/`.
 - For detailed technical documentation, design decisions, data flows, and extension guidelines, see [`ARCHITECTURE.md`](ARCHITECTURE.md).
 - For upcoming features, backlog, and planned ideas, see [`ROADMAP.md`](ROADMAP.md).
 - For exploit investigations, bug tracking, and QA testing notes, see [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md).
+- For Git Flow standards, PR conventions, and AI agent guidelines, see [`AGENT.md`](AGENT.md).
 
 ---
 
