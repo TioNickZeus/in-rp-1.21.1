@@ -7,7 +7,9 @@ import com.tio.inrp.util.LocalizationHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.ArrayList;
@@ -16,13 +18,36 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class RollCommand {
-    private static final Pattern DICE_PATTERN = Pattern.compile("^(\\d+)?d(\\d+)$", Pattern.CASE_INSENSITIVE);
+/**
+ * {@code /roll} &mdash; dice rolls in either plain ({@code /roll 20}) or RPG ({@code /roll 2d6}) notation.
+ *
+ * <p>Results are broadcast to everyone within {@code rollProximityRadius} blocks, or server-wide when the radius is
+ * disabled, and are always written to the server log so a roll can be audited after the fact.
+ */
+public final class RollCommand {
+
+    private static final int MIN_SIDES = 2;
+    private static final int MAX_SIDES = 10_000;
+    private static final int MIN_DICE = 1;
+    private static final int MAX_DICE = 100;
+
+    /**
+     * Digit runs are length-capped so a value such as {@code 1d99999999999} cannot overflow {@code parseInt} and
+     * surface as a raw exception to the player.
+     */
+    private static final Pattern DICE_PATTERN = Pattern.compile("^(\\d{1,9})?[dD](\\d{1,9})$");
+    private static final Pattern SIDES_PATTERN = Pattern.compile("^\\d{1,9}$");
+
+    private static final String[] SUGGESTIONS = {"20", "100", "2d6", "3d20"};
+
+    private RollCommand() {
+    }
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("roll")
-                .executes(context -> executeDefaultRoll(context.getSource()))
+                .executes(context -> performSimpleRoll(context.getSource(), InRPConfig.ROLL_DEFAULT_SIDES.get()))
                 .then(Commands.argument("dice", StringArgumentType.word())
+                        .suggests((context, builder) -> SharedSuggestionProvider.suggest(SUGGESTIONS, builder))
                         .executes(context -> executeCustomRoll(
                                 context.getSource(),
                                 StringArgumentType.getString(context, "dice")
@@ -30,38 +55,17 @@ public class RollCommand {
         );
     }
 
-    private static int executeDefaultRoll(CommandSourceStack source) {
-        int sides = InRPConfig.ROLL_DEFAULT_SIDES.get();
-        return performSimpleRoll(source, sides);
-    }
-
     private static int executeCustomRoll(CommandSourceStack source, String input) {
-        // Try parsing as simple integer (e.g. "20", "100")
-        try {
-            int sides = Integer.parseInt(input);
-            if (sides < 2 || sides > 10000) {
-                source.sendFailure(LocalizationHelper.getPrefixedMessage("inrp.roll.error.number_bounds")
-                        .withStyle(ChatFormatting.RED));
-                return 0;
-            }
-            return performSimpleRoll(source, sides);
-        } catch (NumberFormatException ignored) {
+        Matcher diceNotation = DICE_PATTERN.matcher(input);
+        if (diceNotation.matches()) {
+            String count = diceNotation.group(1);
+            return performDiceRoll(source,
+                    count == null ? 1 : parseOrInvalid(count),
+                    parseOrInvalid(diceNotation.group(2)));
         }
 
-        // Try parsing as dice notation (e.g. "2d6", "d20", "4d10")
-        Matcher matcher = DICE_PATTERN.matcher(input);
-        if (matcher.matches()) {
-            String countStr = matcher.group(1);
-            int count = (countStr == null || countStr.isEmpty()) ? 1 : Integer.parseInt(countStr);
-            int sides = Integer.parseInt(matcher.group(2));
-
-            if (count < 1 || count > 100 || sides < 2 || sides > 10000) {
-                source.sendFailure(LocalizationHelper.getPrefixedMessage("inrp.roll.error.number_bounds")
-                        .withStyle(ChatFormatting.RED));
-                return 0;
-            }
-
-            return performDiceRoll(source, count, sides);
+        if (SIDES_PATTERN.matcher(input).matches()) {
+            return performSimpleRoll(source, parseOrInvalid(input));
         }
 
         source.sendFailure(LocalizationHelper.getPrefixedMessage("inrp.roll.error.invalid_format")
@@ -69,43 +73,36 @@ public class RollCommand {
         return 0;
     }
 
+    /** @return the rolled value, so command blocks and {@code /execute store} can read the result. */
     private static int performSimpleRoll(CommandSourceStack source, int sides) {
+        if (sides < MIN_SIDES || sides > MAX_SIDES) {
+            return outOfBounds(source);
+        }
+
         int result = ThreadLocalRandom.current().nextInt(1, sides + 1);
-        Component playerName = source.getDisplayName();
-
-        Component message = LocalizationHelper.getPrefixedMessage(
-                "inrp.roll.result.simple",
-                playerName,
-                result,
-                sides
-        ).withStyle(ChatFormatting.YELLOW);
-
-        broadcastRoll(source, message);
+        broadcastRoll(source, LocalizationHelper.getPrefixedMessage(
+                "inrp.roll.result.simple", source.getDisplayName(), result, sides).withStyle(ChatFormatting.YELLOW));
         return result;
     }
 
+    /** @return the sum of the dice. */
     private static int performDiceRoll(CommandSourceStack source, int count, int sides) {
-        int total = 0;
-        List<Integer> rolls = new ArrayList<>(count);
-        for (int i = 0; i < count; i++) {
-            int r = ThreadLocalRandom.current().nextInt(1, sides + 1);
-            rolls.add(r);
-            total += r;
+        if (count < MIN_DICE || count > MAX_DICE || sides < MIN_SIDES || sides > MAX_SIDES) {
+            return outOfBounds(source);
         }
 
-        Component playerName = source.getDisplayName();
-        String individualRolls = rolls.toString();
+        ThreadLocalRandom random = ThreadLocalRandom.current();
+        List<Integer> rolls = new ArrayList<>(count);
+        int total = 0;
+        for (int i = 0; i < count; i++) {
+            int roll = random.nextInt(1, sides + 1);
+            rolls.add(roll);
+            total += roll;
+        }
 
-        Component message = LocalizationHelper.getPrefixedMessage(
-                "inrp.roll.result.dice",
-                playerName,
-                total,
-                individualRolls,
-                count,
-                sides
-        ).withStyle(ChatFormatting.YELLOW);
-
-        broadcastRoll(source, message);
+        broadcastRoll(source, LocalizationHelper.getPrefixedMessage(
+                "inrp.roll.result.dice", source.getDisplayName(), total, rolls.toString(), count, sides)
+                .withStyle(ChatFormatting.YELLOW));
         return total;
     }
 
@@ -113,25 +110,41 @@ public class RollCommand {
         double radius = InRPConfig.ROLL_PROXIMITY_RADIUS.get();
 
         if (radius <= 0 || !(source.getEntity() instanceof ServerPlayer player)) {
-            // Global broadcast
+            // Global broadcast; also reaches the server log.
             source.getServer().getPlayerList().broadcastSystemMessage(message, false);
             return;
         }
 
         double radiusSq = radius * radius;
-        int recipientCount = 0;
-        for (ServerPlayer nearbyPlayer : player.serverLevel().players()) {
-            if (nearbyPlayer.distanceToSqr(player) <= radiusSq) {
-                nearbyPlayer.sendSystemMessage(message);
-                recipientCount++;
+        ServerLevel level = player.serverLevel();
+        int heardBy = 0;
+        for (ServerPlayer nearby : level.players()) {
+            if (nearby.distanceToSqr(player) <= radiusSq) {
+                nearby.sendSystemMessage(message);
+                heardBy++;
             }
         }
 
-        if (recipientCount <= 1) {
-            player.sendSystemMessage(
-                    LocalizationHelper.getMessage("inrp.roll.no_one_heard")
-                            .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC)
-            );
+        // The roller always hears themselves, so anything above one means somebody else did too.
+        if (heardBy <= 1) {
+            player.sendSystemMessage(LocalizationHelper.getMessage("inrp.roll.no_one_heard")
+                    .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC));
+        }
+        player.server.sendSystemMessage(message);
+    }
+
+    private static int outOfBounds(CommandSourceStack source) {
+        source.sendFailure(LocalizationHelper.getPrefixedMessage("inrp.roll.error.number_bounds")
+                .withStyle(ChatFormatting.RED));
+        return 0;
+    }
+
+    /** @return the parsed value, or {@code -1} when the digits overflow an {@code int} so bounds checks reject it. */
+    private static int parseOrInvalid(String digits) {
+        try {
+            return Integer.parseInt(digits);
+        } catch (NumberFormatException e) {
+            return -1;
         }
     }
 }

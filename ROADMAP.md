@@ -7,7 +7,8 @@ This document serves as a central board to track ideas, suggestions, quality-of-
 ## 📌 Immediate Backlog
 
 - [x] **Include `/afk` in `/rp help`**: Added display entry for `inrp.help.afk` in the `showHelp` method of [RPCommand.java](file:///c:/Users/Rian/Documents/GitHub/in-rp-1.21.1/src/main/java/com/tio/inrp/commands/RPCommand.java) (bundled with `en_us.json` and `pt_br.json`).
-- [ ] **Tab List Synchronization after Revive**: Monitor NeoForge API updates to work around vanilla client cache retention without requiring a reconnect.
+- [x] **Tab List Synchronization after Revive**: fixed, and it was never a vanilla client cache problem. `PlayerEvent.TabListNameFormat` is fired from `ServerPlayer.refreshTabListName()`, which caches the result in `tabListDisplayName`; `ScoreboardHandler.refreshPlayerTabList` used to broadcast `ClientboundPlayerInfoUpdatePacket(UPDATE_DISPLAY_NAME, ...)` directly, and that packet only re-serialises the **cached** value — so the tag never recomputed and a revived player kept `[DEAD]` until reconnecting. `refreshPlayerTabList` now delegates to `refreshTabListName()`, which recomputes the name and broadcasts it itself, only when it actually changed.
+- [x] **Preserve foreign scoreboard teams**: done. `ScoreboardHandler` records the player's team in the `PREVIOUS_TEAM` attachment before moving them onto `inrp_active` / `inrp_afk`, and restores it when they leave both. Servers using teams for rank prefixes (LuckPerms, datapacks, manual `/team join`) no longer lose that membership.
 
 ---
 
