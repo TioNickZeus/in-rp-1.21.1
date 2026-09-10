@@ -22,6 +22,7 @@ A lightweight, server-friendly **Roleplay (RP) Switch & Utility Mod** for **Mine
 - **Dynamic Overhead & Chat Identifiers**:
   - Displays a unified roleplay suffix (e.g., `Player [in RP]`) above the player's head, in the tab list and in chat via native Minecraft Scoreboard Teams, without duplication.
   - The text comes from `nametagSuffix` in the server config; set it to `""` to disable the marker entirely.
+  - Compatible with servers that already use scoreboard teams for rank prefixes: the player's original team is remembered and restored when they leave RP mode.
 - **Modular Dice Roller (`/roll`)**:
   - Standard dice: `/roll` (default 1d20), `/roll 20`, `/roll 100`.
   - Classic RPG notation: `/roll 2d6`, `/roll 3d20`, `/roll 1d100` with sum and individual die breakdown.

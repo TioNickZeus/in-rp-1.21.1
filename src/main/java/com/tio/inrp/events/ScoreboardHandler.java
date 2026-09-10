@@ -8,6 +8,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.ServerScoreboard;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.scores.PlayerTeam;
+import net.minecraft.world.scores.Team;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
@@ -45,14 +46,22 @@ public final class ScoreboardHandler {
         refreshSuffix(scoreboard, TEAM_NAME);
         refreshSuffix(scoreboard, TEAM_AFK_NAME);
 
-        leaveTeamUnless(scoreboard, player, TEAM_NAME, targetTeamName);
-        leaveTeamUnless(scoreboard, player, TEAM_AFK_NAME, targetTeamName);
+        // Recorded before the player leaves anything: a player moving from the RP team to the AFK team is briefly
+        // on no team at all, and reading it afterwards would look like they never had a foreign team to go back to.
+        if (targetTeamName != null) {
+            rememberForeignTeam(player);
+        }
+
+        boolean leftRPTeam = leaveTeamUnless(scoreboard, player, TEAM_NAME, targetTeamName);
+        boolean leftAFKTeam = leaveTeamUnless(scoreboard, player, TEAM_AFK_NAME, targetTeamName);
 
         if (targetTeamName != null) {
             PlayerTeam team = getOrCreateTeam(scoreboard, targetTeamName);
             if (player.getTeam() != team) {
                 scoreboard.addPlayerToTeam(player.getScoreboardName(), team);
             }
+        } else if (leftRPTeam || leftAFKTeam) {
+            restoreForeignTeam(scoreboard, player);
         }
 
         player.refreshDisplayName();
@@ -139,13 +148,62 @@ public final class ScoreboardHandler {
         return Component.literal(" ").append(Component.literal(suffix).withStyle(ChatFormatting.GOLD));
     }
 
-    private static void leaveTeamUnless(ServerScoreboard scoreboard, ServerPlayer player, String teamName, String keptTeamName) {
+    /** @return whether the player was actually removed from {@code teamName}. */
+    private static boolean leaveTeamUnless(ServerScoreboard scoreboard, ServerPlayer player, String teamName, String keptTeamName) {
         if (teamName.equals(keptTeamName)) {
-            return;
+            return false;
         }
         PlayerTeam team = scoreboard.getPlayerTeam(teamName);
         if (team != null && player.getTeam() == team) {
             scoreboard.removePlayerFromTeam(player.getScoreboardName(), team);
+            return true;
         }
+        return false;
+    }
+
+    /**
+     * Records the team the player is leaving behind, so {@link #restoreForeignTeam} can put them back later.
+     *
+     * <p>Vanilla's {@code addPlayerToTeam} removes a player from their current team, so a server that uses teams
+     * for rank prefixes would otherwise lose that membership permanently the first time the player entered RP mode.
+     */
+    private static void rememberForeignTeam(ServerPlayer player) {
+        Team current = player.getTeam();
+        if (current == null) {
+            forgetForeignTeam(player);
+            return;
+        }
+
+        // Moving between our own RP and AFK teams: keep the team we recorded when the player first entered.
+        if (isOwnTeam(current.getName())) {
+            return;
+        }
+        InRPAttachments.setPreviousTeam(player, current.getName());
+    }
+
+    /** Puts the player back on the team they held before entering RP mode, if it still exists. */
+    private static void restoreForeignTeam(ServerScoreboard scoreboard, ServerPlayer player) {
+        String rememberedTeam = InRPAttachments.getPreviousTeam(player);
+        forgetForeignTeam(player);
+        if (rememberedTeam.isEmpty()) {
+            return;
+        }
+
+        PlayerTeam team = scoreboard.getPlayerTeam(rememberedTeam);
+        if (team == null) {
+            // Deleted while the player was in RP mode; there is nothing to go back to.
+            return;
+        }
+        scoreboard.addPlayerToTeam(player.getScoreboardName(), team);
+    }
+
+    private static void forgetForeignTeam(ServerPlayer player) {
+        if (!InRPAttachments.getPreviousTeam(player).isEmpty()) {
+            InRPAttachments.setPreviousTeam(player, "");
+        }
+    }
+
+    private static boolean isOwnTeam(String teamName) {
+        return TEAM_NAME.equals(teamName) || TEAM_AFK_NAME.equals(teamName);
     }
 }

@@ -31,6 +31,17 @@ public final class InRPAttachments {
     public static final Supplier<AttachmentType<Integer>> DEATH_COUNT = registerCounter("death_count", 0);
     public static final Supplier<AttachmentType<Integer>> MAX_LIVES = registerCounter("max_lives", UNLIMITED_LIVES);
 
+    /**
+     * Scoreboard team the player belonged to before In-RP moved them onto one of its own, or an empty string when
+     * there was none. Persisted rather than kept in memory so the team survives a logout, a death and a restart.
+     */
+    public static final Supplier<AttachmentType<String>> PREVIOUS_TEAM = ATTACHMENT_TYPES.register(
+            "previous_team",
+            () -> AttachmentType.builder(() -> "")
+                    .serialize(Codec.STRING)
+                    .copyOnDeath()
+                    .build());
+
     private InRPAttachments() {
     }
 
@@ -109,6 +120,28 @@ public final class InRPAttachments {
 
     public static void setAFK(Player player, boolean afk) {
         setFlag(player, IS_AFK, afk);
+    }
+
+    // ----------------------------------------------------------- Previous team
+
+    /** @return the remembered scoreboard team name, or an empty string when there is none. */
+    public static String getPreviousTeam(Player player) {
+        if (player == null) {
+            return "";
+        }
+        AttachmentType<String> attachment = PREVIOUS_TEAM.get();
+        if (!player.hasData(attachment)) {
+            return "";
+        }
+        String teamName = player.getData(attachment);
+        return teamName != null ? teamName : "";
+    }
+
+    /** Remembers a scoreboard team name; pass an empty string to forget it. */
+    public static void setPreviousTeam(Player player, String teamName) {
+        if (player != null) {
+            player.setData(PREVIOUS_TEAM.get(), teamName == null ? "" : teamName);
+        }
     }
 
     // ---------------------------------------------------------------- Chat spy

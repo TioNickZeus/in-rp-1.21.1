@@ -39,6 +39,12 @@ save-data field was removed, so existing worlds and configs keep working unchang
 - **AFK could re-trigger right after waking up** — waking up did not refresh vanilla's `lastActionTime`, so the
   next inactivity sweep could flag the player again seconds later.
 - **Players stayed stuck AFK** when `afkEnabled` was switched off while they were flagged.
+- **Entering RP mode destroyed the player's scoreboard team** — vanilla's `addPlayerToTeam` evicts a player from
+  their current team, so on a server that uses teams for rank prefixes (LuckPerms, datapacks, manual
+  `/team join`) the first `/rp on` dropped that membership and `/rp off` left the player on no team at all. The
+  previous team is now recorded in a new `PREVIOUS_TEAM` attachment and restored when the player leaves both the
+  RP and AFK teams. Persisted, so it survives a logout, a death and a restart; if the team was deleted in the
+  meantime, the player is simply left teamless.
 - **`[DEAD]` and `[AFK]` tab list tags never refreshed** — a revived player kept their `[DEAD]` tag, and an AFK
   player kept `[AFK]`, until they reconnected. `refreshPlayerTabList` broadcast the tab list packet directly, but
   that packet only re-serialises the display name NeoForge cached the last time `PlayerEvent.TabListNameFormat`

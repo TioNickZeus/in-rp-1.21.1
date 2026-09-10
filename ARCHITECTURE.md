@@ -138,6 +138,7 @@ NeoForge Data Attachments is the primary player state persistence mechanism. Dat
 | `DEATH_COUNT` | `Integer` | `0` | Accumulated death counter |
 | `MAX_LIVES` | `Integer` | `-1` | Lives limit (-1 = unlimited) |
 | `IS_DEAD` | `Boolean` | `false` | Player permanently dead |
+| `PREVIOUS_TEAM` | `String` | `""` | Scoreboard team held before In-RP moved the player onto one of its own |
 
 #### JSON Store (`InRPLivesManager`)
 
@@ -162,6 +163,12 @@ An auxiliary store (`inrp_dead_players.json` in world folder) that tracks UUIDs 
 > and caches the result; the packet only serialises that cache, so a manual broadcast re-sends the stale name.
 > Always call `ScoreboardHandler.refreshPlayerTabList`, which delegates to `refreshTabListName()`, and update the
 > player's state **before** calling it, since the tag is derived from that state.
+
+> **Foreign teams**: vanilla's `addPlayerToTeam` evicts a player from their current team, so `ScoreboardHandler`
+> records it in the `PREVIOUS_TEAM` attachment before joining `inrp_active` / `inrp_afk` and puts the player back
+> when they leave both. The value is recorded **before** the player leaves any team &mdash; moving from the RP
+> team to the AFK team leaves them briefly teamless, and reading it afterwards would look like there was nothing
+> to go back to. It is persisted rather than kept in memory so the team survives a logout, a death and a restart.
 
 ### 2.5 `util/` — Utilities
 
