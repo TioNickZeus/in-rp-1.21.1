@@ -107,10 +107,22 @@ neoForge {
 // 'runtimeOnly' they are not published as dependencies of this mod.
 configurations {
     runtimeClasspath.extendsFrom localRuntime
+    testCompileClasspath.extendsFrom compileClasspath
+    testRuntimeClasspath.extendsFrom runtimeClasspath
+}
+
+repositories {
+    mavenCentral()
 }
 
 dependencies {
     // In-RP is standalone: it only needs Minecraft and NeoForge, both provided by the moddev plugin.
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.

@@ -2,6 +2,12 @@
 
 All notable changes to the In-RP mod will be documented in this file.
 
+## [Unreleased]
+
+### 🔴 Bug Fixes & Stability
+
+- **Server Startup Crash Fix (`NullPointerException` in `livesAction` config)** — Fixed a critical `NullPointerException` during dedicated server startup (`ServerLifecycleHooks.handleServerAboutToStart`) when creating default configurations. `InRPConfig.LIVES_ACTION` now uses `Arrays.asList` instead of `List.of`, allowing NeoForge's configuration correction mechanism to safely validate uninitialized/missing keys against `null` without throwing an exception. Added automated unit regression test.
+
 ## [1.0.7] - 2026-09-10
 
 Comprehensive hardening pass, exploit mitigations, stability overhauls, and bug fixes across the entire codebase. No command, config key or save-data field was removed, so existing worlds and configurations continue working seamlessly.
