@@ -180,11 +180,11 @@ The configuration is a NeoForge `SERVER` config, so it is generated per world at
 
 ### Dedicated Server
 1. Ensure your server is running **NeoForge 1.21.1** (NeoForge 21.1.249 or newer).
-2. Place the compiled `inrp-1.0.7.jar` into the server's `mods/` directory.
+2. Place the compiled `inrp-1.0.8.jar` into the server's `mods/` directory.
 3. Start the server. Players with pure **Vanilla Minecraft 1.21.1** clients can connect immediately!
 
 ### Singleplayer / Client
-1. Place the `inrp-1.0.7.jar` in your `.minecraft/mods/` directory.
+1. Place the `inrp-1.0.8.jar` in your `.minecraft/mods/` directory.
 2. Launch Minecraft using the NeoForge 1.21.1 profile.
 
 ---

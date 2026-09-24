@@ -2,7 +2,7 @@
 
 All notable changes to the In-RP mod will be documented in this file.
 
-## [Unreleased]
+## [1.0.8] - 2026-09-24
 
 ### 🔴 Bug Fixes & Stability
 
