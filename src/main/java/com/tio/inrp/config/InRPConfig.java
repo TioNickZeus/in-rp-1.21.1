@@ -3,6 +3,7 @@ package com.tio.inrp.config;
 import com.tio.inrp.InRP;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -116,7 +117,9 @@ public final class InRPConfig {
 
         LIVES_ACTION = BUILDER
                 .comment("Action taken when a player loses all lives (spectator or kick)")
-                .defineInList("livesAction", LIVES_ACTION_SPECTATOR, List.of(LIVES_ACTION_SPECTATOR, LIVES_ACTION_KICK));
+                // Note: Must use Arrays.asList instead of List.of because NeoForge's config correction
+                // calls contains(null) for missing values; List.of throws NullPointerException on null checks.
+                .defineInList("livesAction", LIVES_ACTION_SPECTATOR, Arrays.asList(LIVES_ACTION_SPECTATOR, LIVES_ACTION_KICK));
 
         DEFAULT_MAX_LIVES = BUILDER
                 .comment("Default max lives for players (-1 for unlimited/disabled)")
