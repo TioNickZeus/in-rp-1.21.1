@@ -2,7 +2,7 @@
 
 > **Single Source of Truth (SSOT)** for the mod's technical architecture and design decisions.  
 > Every AI agent, contributor, or maintainer must read this document before modifying code.  
-> **Last updated**: October 2026 — version 1.0.8
+> **Last updated**: October 2026 — version 1.0.9
 
 ---
 
