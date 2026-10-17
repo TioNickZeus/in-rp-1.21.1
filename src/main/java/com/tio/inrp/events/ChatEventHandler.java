@@ -73,7 +73,11 @@ public final class ChatEventHandler {
 
             if (inRange) {
                 recipient.sendSystemMessage(localMessage);
-                heardBy++;
+                if (recipient == sender || !ChatFormat.isStealthStaff(recipient)) {
+                    heardBy++;
+                } else {
+                    ChatFormat.notifyStealthReminder(recipient);
+                }
             } else if (spyEnabled && recipient != sender && ChatFormat.isActiveChatSpy(recipient)) {
                 if (spyMessage == null) {
                     spyMessage = ChatFormat.channelMessage(

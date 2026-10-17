@@ -17,9 +17,10 @@ The purpose of this file is to document suspected issues thoroughly with **step-
 
 ## 🔍 Active Investigation Queue
 
-### 1. 🧪 [Pending Testing] Chat & Roll "Sonar Radar": Detection of Spectators / Vanished Staff
+### 1. ✅ [Resolved] Chat & Roll "Sonar Radar": Detection of Spectators / Vanished Staff
 * **Affected Areas:** Proximity Local Chat ([ChatEventHandler.java](file:///c:/Users/Rian/Documents/GitHub/in-rp-1.21.1/src/main/java/com/tio/inrp/events/ChatEventHandler.java)) & Dice Roller ([RollCommand.java](file:///c:/Users/Rian/Documents/GitHub/in-rp-1.21.1/src/main/java/com/tio/inrp/commands/RollCommand.java))
 * **Severity:** Medium (Information Disclosure / Anti-Moderation Exploit)
+* **Resolved (Unreleased, branch `fix/staff-stealth-audience`, tested in-game):** staff opt out with `/rpadmin stealth [true|false]` instead of the automatic spectator/chat spy detection proposed below. Stealth staff still receive messages but do not count as listeners, and see an action bar reminder. Spectators and third-party vanish mods are not detected automatically.
 * **Description:**
   - Both local chat and `/roll` notify the player with `(Nobody nearby heard you)` when `recipientCount <= 1`.
   - Currently, any player within the Euclidean radius (`nearby.distanceToSqr(sender) <= radiusSq`) is added to the recipient set, regardless of their game mode (`SPECTATOR`) or invisibility status.

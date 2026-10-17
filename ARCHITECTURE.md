@@ -54,7 +54,7 @@ com.tio.inrp/
 │   ├── LivesCommand.java        ← /lives [player] (query remaining lives & status)
 │   ├── GlobalChatCommand.java   ← /g, /global <message> (server-wide broadcast with cooldown)
 │   ├── ChatSpyCommand.java      ← /chatspy (OP 2+ staff toggle for chat surveillance)
-│   └── RPAdminCommand.java      ← /rpadmin (set|config|lives|spy|confirm|help)
+│   └── RPAdminCommand.java      ← /rpadmin (set|config|lives|spy|stealth|confirm|help)
 ├── config/
 │   └── InRPConfig.java          ← TOML server configuration specifications & sanitizing accessors
 ├── data/
@@ -144,7 +144,7 @@ src/test/java/com/tio/inrp/config/InRPConfigTest.java ← JUnit 5 tests for InRP
   - Standard chat (`ServerChatEvent`) is intercepted when `localChatEnabled = true`.
   - Eligible recipients are filtered using `distanceToSqr` (`localChatRadiusSq()`) within the sender's current `ServerLevel`.
   - Message format: `[L] <PlayerName>: message` (via `ChatFormat.channelMessage()`).
-  - If no other player is in proximity, the sender receives subtle feedback: `inrp.chat.local.no_one_heard`. Every player in the same level within the radius counts as a recipient, including spectators: see KNOWN_ISSUES.md — Chat & Roll "Sonar Radar": Detection of Spectators / Vanished Staff (#1).
+  - If no other listener is in proximity, the sender receives subtle feedback: `inrp.chat.local.no_one_heard`. Every player in the same level within the radius receives the message and counts as a listener, **except staff with `/rpadmin stealth` enabled** (`ChatFormat.isStealthStaff`, OP level re-checked at delivery): they still receive the message, get an action bar reminder (`ChatFormat.notifyStealthReminder`) and are not counted. Spectators and third-party vanish mods are **not** detected automatically, staff must opt in (KNOWN_ISSUES.md #1). `/roll` applies the same rule.
 - **Bypassing Chat Signature Issues**:
   - Messages are broadcast to recipients as unsigned system messages (`recipient.sendSystemMessage()`). This avoids signature verification crashes on vanilla clients caused by altered recipient audiences.
 - **Global Chat (`/g`, `/global`)**:

@@ -3,6 +3,7 @@ package com.tio.inrp.commands;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.tio.inrp.config.InRPConfig;
+import com.tio.inrp.util.ChatFormat;
 import com.tio.inrp.util.LocalizationHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
@@ -121,7 +122,11 @@ public final class RollCommand {
         for (ServerPlayer nearby : level.players()) {
             if (nearby.distanceToSqr(player) <= radiusSq) {
                 nearby.sendSystemMessage(message);
-                heardBy++;
+                if (nearby == player || !ChatFormat.isStealthStaff(nearby)) {
+                    heardBy++;
+                } else {
+                    ChatFormat.notifyStealthReminder(nearby);
+                }
             }
         }
 

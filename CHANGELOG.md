@@ -8,6 +8,8 @@ All notable changes to the In-RP mod will be documented in this file.
 
 - **Singleplayer/LAN Host AFK Idle Kick Protection** — Guarded `AFKEventHandler.onServerTick` with `player.server.isSingleplayerOwner` so that the host of a Singleplayer or LAN world is never kicked for inactivity when `afkKickSeconds` is configured. The host remains connected and active in AFK state, preventing abrupt integrated server termination and `session.lock` corruption.
 
+- **Staff Stealth (`/rpadmin stealth [true|false]`)** — Closes the "Sonar Radar" leak (KNOWN_ISSUES #1), where the `(Nobody nearby heard you)` notice of local chat and `/roll` disappeared when an invisible or spectating admin stood nearby. Staff with OP 2+ can opt out of the listener count: they still receive local chat and rolls, but no longer count as a listener, and get an action bar reminder for each message the sender cannot tell they saw. The flag is persisted per player (`is_stealth` attachment) and the OP level is re-checked at delivery. It does not make the player invisible; third-party vanish mods are not detected automatically. Behaviour is unchanged for everyone who does not enable it.
+
 ## [1.0.8] - 2026-09-24
 
 ### 🔴 Bug Fixes & Stability

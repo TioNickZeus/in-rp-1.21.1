@@ -92,6 +92,10 @@
   "inrp.admin.help.lives_applydefault": "/rpadmin lives applydefault [targets] - Apply default lives",
   "inrp.admin.help.confirm": "/rpadmin confirm - Confirm a pending bulk action",
   "inrp.admin.help.spy": "/rpadmin spy - Toggle chat spy for staff",
+  "inrp.admin.help.stealth": "/rpadmin stealth [true|false] - Hide yourself from the local chat/roll audience count",
+  "inrp.admin.stealth.enabled": "Stealth enabled. You still receive local chat and rolls, but you no longer count as a listener. This does not make you invisible.",
+  "inrp.admin.stealth.disabled": "Stealth disabled. You now count as a listener again.",
+  "inrp.stealth.reminder": "Stealth active: the sender does not know you saw this",
 
   "inrp.chat.local.tag": "[L]",
   "inrp.chat.global.tag": "[G]",

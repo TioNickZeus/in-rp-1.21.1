@@ -92,6 +92,10 @@
   "inrp.admin.help.lives_applydefault": "/rpadmin lives applydefault [alvos] - Aplicar vidas padrão",
   "inrp.admin.help.confirm": "/rpadmin confirm - Confirmar uma ação em massa pendente",
   "inrp.admin.help.spy": "/rpadmin spy - Alternar espionagem de chat para staff",
+  "inrp.admin.help.stealth": "/rpadmin stealth [true|false] - Ocultar você da contagem de ouvintes do chat local/roll",
+  "inrp.admin.stealth.enabled": "Stealth ativado. Você continua recebendo chat local e rolagens, mas não conta mais como ouvinte. Isso não torna você invisível.",
+  "inrp.admin.stealth.disabled": "Stealth desativado. Você volta a contar como ouvinte.",
+  "inrp.stealth.reminder": "Stealth ativo: o remetente não sabe que você viu isto",
 
   "inrp.chat.local.tag": "[L]",
   "inrp.chat.global.tag": "[G]",
