@@ -65,4 +65,20 @@ public final class ChatFormat {
                 && InRPAttachments.isChatSpy(player)
                 && player.hasPermissions(InRP.STAFF_PERMISSION_LEVEL);
     }
+
+    /**
+     * Stealth staff still receive local chat and rolls but do not count as listeners, so the sender's "nobody heard
+     * you" notice cannot be used to detect them. The permission level is re-checked at delivery time, like chat spy.
+     */
+    public static boolean isStealthStaff(ServerPlayer player) {
+        return player != null
+                && InRPAttachments.isStealth(player)
+                && player.hasPermissions(InRP.STAFF_PERMISSION_LEVEL);
+    }
+
+    /** Action bar reminder shown to a stealth staff member who just received a message the sender cannot tell. */
+    public static void notifyStealthReminder(ServerPlayer player) {
+        player.displayClientMessage(LocalizationHelper.getMessage("inrp.stealth.reminder")
+                .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC), true);
+    }
 }

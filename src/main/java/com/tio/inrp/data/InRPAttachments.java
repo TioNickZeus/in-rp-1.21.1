@@ -27,6 +27,7 @@ public final class InRPAttachments {
     public static final Supplier<AttachmentType<Boolean>> IS_DEAD = registerFlag("is_dead");
     public static final Supplier<AttachmentType<Boolean>> IS_AFK = registerFlag("is_afk");
     public static final Supplier<AttachmentType<Boolean>> IS_CHAT_SPY = registerFlag("is_chat_spy");
+    public static final Supplier<AttachmentType<Boolean>> IS_STEALTH = registerFlag("is_stealth");
 
     public static final Supplier<AttachmentType<Integer>> DEATH_COUNT = registerCounter("death_count", 0);
     public static final Supplier<AttachmentType<Integer>> MAX_LIVES = registerCounter("max_lives", UNLIMITED_LIVES);
@@ -152,6 +153,17 @@ public final class InRPAttachments {
 
     public static void setChatSpy(Player player, boolean spy) {
         setFlag(player, IS_CHAT_SPY, spy);
+    }
+
+    // ------------------------------------------------------------------ Stealth
+
+    /** Staff opt-out from the "nobody heard you" audience count of local chat and rolls. */
+    public static boolean isStealth(Player player) {
+        return getFlag(player, IS_STEALTH);
+    }
+
+    public static void setStealth(Player player, boolean stealth) {
+        setFlag(player, IS_STEALTH, stealth);
     }
 
     // ---------------------------------------------------------------- Internals

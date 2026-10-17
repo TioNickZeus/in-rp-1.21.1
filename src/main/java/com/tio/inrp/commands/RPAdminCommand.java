@@ -54,7 +54,8 @@ public final class RPAdminCommand {
             new HelpText.Entry("inrp.admin.help.lives_action", ChatFormatting.GRAY),
             new HelpText.Entry("inrp.admin.help.lives_applydefault", ChatFormatting.GRAY),
             new HelpText.Entry("inrp.admin.help.confirm", ChatFormatting.GRAY),
-            new HelpText.Entry("inrp.admin.help.spy", ChatFormatting.GRAY)
+            new HelpText.Entry("inrp.admin.help.spy", ChatFormatting.GRAY),
+            new HelpText.Entry("inrp.admin.help.stealth", ChatFormatting.GRAY)
     );
 
     /** An action applied to a freshly resolved set of online targets. */
@@ -119,6 +120,11 @@ public final class RPAdminCommand {
                         .executes(context -> executeConfirm(context.getSource())))
                 .then(Commands.literal("spy")
                         .executes(context -> ChatSpyCommand.toggleSpy(context.getSource())))
+                .then(Commands.literal("stealth")
+                        .executes(context -> setStealth(context.getSource(), null))
+                        .then(Commands.argument("value", BoolArgumentType.bool())
+                                .executes(context -> setStealth(context.getSource(),
+                                        BoolArgumentType.getBool(context, "value")))))
                 .then(Commands.literal("help")
                         .executes(context -> showAdminHelp(context.getSource())))
         );
@@ -366,6 +372,28 @@ public final class RPAdminCommand {
     /** @return the executing player's UUID, or {@code null} for the console and command blocks. */
     private static UUID adminUUID(CommandSourceStack source) {
         return source.getEntity() instanceof ServerPlayer player ? player.getUUID() : null;
+    }
+
+    // -------------------------------------------------------------------- Stealth
+
+    /**
+     * Opts the executing staff member in or out of the local chat / roll audience count.
+     *
+     * @param value the requested state, or {@code null} to flip the current one.
+     */
+    private static int setStealth(CommandSourceStack source, Boolean value) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            source.sendFailure(LocalizationHelper.getMessage("inrp.error.players_only"));
+            return 0;
+        }
+
+        boolean enabled = value != null ? value : !InRPAttachments.isStealth(player);
+        InRPAttachments.setStealth(player, enabled);
+
+        String messageKey = enabled ? "inrp.admin.stealth.enabled" : "inrp.admin.stealth.disabled";
+        ChatFormatting color = enabled ? ChatFormatting.GREEN : ChatFormatting.YELLOW;
+        source.sendSuccess(() -> LocalizationHelper.getPrefixedMessage(messageKey).withStyle(color), false);
+        return 1;
     }
 
     private static int showAdminHelp(CommandSourceStack source) {

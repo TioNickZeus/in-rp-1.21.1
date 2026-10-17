@@ -83,6 +83,7 @@ A lightweight, server-friendly **Roleplay (RP) Switch & Utility Mod** for **Mine
 | `/rpadmin confirm` | OP (Level 2) | Confirms a pending bulk action (required when affecting 5+ players). |
 | `/rpadmin spy` | OP (Level 2) | Toggles Chat Spy mode to monitor out-of-range local chat and PMs. |
 | `/chatspy` | OP (Level 2) | Quick shortcut to toggle Chat Spy mode. |
+| `/rpadmin stealth [true\|false]` | OP (Level 2) | Opts you out of the local chat / roll listener count, so senders are not told someone invisible is nearby. You still receive the messages (with an action bar reminder). Does not make you invisible. |
 | `/rpadmin help` | OP (Level 2) | Shows a list of all admin commands. |
 
 ---
