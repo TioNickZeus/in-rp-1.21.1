@@ -4,6 +4,8 @@ All notable changes to the In-RP mod will be documented in this file.
 
 ## [Unreleased]
 
+## [1.0.9] - 2026-10-17
+
 ### 🔴 Bug Fixes & Stability
 
 - **Singleplayer/LAN Host AFK Idle Kick Protection** — Guarded `AFKEventHandler.onServerTick` with `player.server.isSingleplayerOwner` so that the host of a Singleplayer or LAN world is never kicked for inactivity when `afkKickSeconds` is configured. The host remains connected and active in AFK state, preventing abrupt integrated server termination and `session.lock` corruption.
