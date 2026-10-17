@@ -129,6 +129,100 @@ The purpose of this file is to document suspected issues thoroughly with **step-
 
 ---
 
+### 8. 🛡️ [Resolved] Singleplayer / LAN Host Disconnection on AFK Idle Kick
+* **Affected Areas:** [AFKEventHandler.java](file:///c:/Users/Rian/Documents/GitHub/in-rp-1.21.1/src/main/java/com/tio/inrp/events/AFKEventHandler.java) (`onServerTick`)
+* **Severity:** High (Crash / Integrated Server Termination & World Lock Risk)
+* **Status:** Resolved
+* **Description:**
+  - When `afkKickSeconds` is configured (> 0), `AFKEventHandler.onServerTick` executes `player.connection.disconnect(...)` when any player's idle duration reaches `kickMillis`.
+  - Unlike `LivesEventHandler.java` (which specifically guards singleplayer/LAN hosts with `isSingleplayerOwner` and shifts them to spectator mode instead of kicking), `AFKEventHandler` originally lacked this immunity check.
+  - **The Risk:** In a Singleplayer world or LAN game, if the host went idle and was kicked, the integrated server immediately aborted and shut down, risking `session.lock` corruption or locking world files.
+* **Resolution:**
+  - In `AFKEventHandler.onServerTick`, guarded the kick branch with:
+    ```java
+    if (player.server.isSingleplayerOwner(player.getGameProfile())) {
+        continue;
+    }
+    ```
+  - The singleplayer/LAN host remains connected and active in AFK state, waking up normally upon movement/interaction, preventing integrated server shutdown. Secondary players on LAN and players on dedicated servers continue to be kicked as expected.
+* **Reproduction & Verification Guide:**
+  1. Launch a Singleplayer world or LAN session.
+  2. Set `afkTimeoutSeconds = 10` and `afkKickSeconds = 15` in `<world>/serverconfig/inrp-server.toml`.
+  3. Stand still and wait for 15 seconds without sending input.
+  4. **Observation Check:** Confirm that the host remains connected and in AFK state. A connecting LAN client is still kicked when reaching the idle limit.
+
+---
+
+### 9. 🧪 [Pending Testing] `/rpadmin lives revive` Bypasses Bulk Confirmation Staging
+* **Affected Areas:** [RPAdminCommand.java](file:///c:/Users/Rian/Documents/GitHub/in-rp-1.21.1/src/main/java/com/tio/inrp/commands/RPAdminCommand.java) (`revive`)
+* **Severity:** Medium (Administrative Staging Inconsistency)
+* **Description:**
+  - In accordance with `ARCHITECTURE.md §3.7`, administrative commands affecting 5 or more players (`CONFIRMATION_THRESHOLD = 5`) must be staged into `ConfirmationManager` requiring explicit `/rpadmin confirm`.
+  - `setMode`, `setLives`, `setDeaths`, and `applyDefaultLives` all call `stage(...)`.
+  - However, `/rpadmin lives revive <targets>` takes a `Collection<GameProfile>` and executes immediately without calling `stage(...)`, even when targeting 5+ players (e.g. `@a`).
+* **Reproduction Guide:**
+  1. Connect 5 or more players to a test server (or simulate multiple dead profiles).
+  2. As an administrator, execute `/rpadmin lives revive @a`.
+  3. **Observation Check:** Does the command execute immediately instead of prompting with `[CONFIRM]` and requiring `/rpadmin confirm`?
+* **Proposed Mitigation:**
+  - Route `revive` through a variant of `stage` that accepts `Collection<GameProfile>` and checks `profiles.size() >= CONFIRMATION_THRESHOLD`.
+
+---
+
+### 10. 🧪 [Pending Testing] Private Message Spy Target Matching with Selectors or Quotes
+* **Affected Areas:** [ChatEventHandler.java](file:///c:/Users/Rian/Documents/GitHub/in-rp-1.21.1/src/main/java/com/tio/inrp/events/ChatEventHandler.java) (`onCommand`)
+* **Severity:** Low (Information Routing Edge Case)
+* **Description:**
+  - `ChatEventHandler.onCommand` parses private message commands (`/tell`, `/msg`, `/w`) by splitting raw input with `split("\\s+", 3)`.
+  - The target name is extracted as `parts[1]` and compared using `recipient.getScoreboardName().equalsIgnoreCase(targetName)` to exclude the intended recipient from receiving duplicate spy messages.
+  - If a player sends a message using target selectors (e.g. `/msg @p hello`) or quoted names (e.g. `/tell "Player Name" hello`), `parts[1]` contains `"@p"` or `"\"Player Name\""`, which fails the string equality check against `recipient.getScoreboardName()`.
+  - If the intended target is also an operator with Chat Spy active, they may receive both the vanilla direct message and a redundant `[SPY:PM]` copy.
+* **Reproduction Guide:**
+  1. Have an operator with Chat Spy active stand as the nearest player to Player A.
+  2. Player A runs `/tell @p Test message`.
+  3. **Observation Check:** Does the operator receive both the vanilla direct message and the `[SPY:PM]` copy?
+* **Proposed Mitigation:**
+  - Resolve the intended target player(s) through vanilla command parse results context or strip enclosing quotes.
+
+---
+
+### 11. 🧪 [Pending Testing] Global Chat (`/g`, `/global`) Remains Functional When Chat Feature is Disabled
+* **Affected Areas:** [GlobalChatCommand.java](file:///c:/Users/Rian/Documents/GitHub/in-rp-1.21.1/src/main/java/com/tio/inrp/commands/GlobalChatCommand.java) (`execute`), [InRPConfig.java](file:///c:/Users/Rian/Documents/GitHub/in-rp-1.21.1/src/main/java/com/tio/inrp/config/InRPConfig.java) (`LOCAL_CHAT_ENABLED`)
+* **Severity:** Low (Feature / Configuration Inconsistency)
+* **Description:**
+  - In-RP's chat subsystem is designed to introduce proximity local chat as the default speech channel, paired with `/global` (aliased as `/g`) to allow intentional broadcast across the server.
+  - When the chat system/mode is disabled via configuration (`localChatEnabled = false`), regular player messages revert to vanilla broadcast behavior.
+  - However, `GlobalChatCommand.execute` does not verify `InRPConfig.LOCAL_CHAT_ENABLED.get()`. As a result, players can still execute `/g <message>` or `/global <message>`.
+  - The command continues to broadcast formatted `[G]` system messages and enforces `globalChatCooldownSeconds`, remaining active even when administrators have explicitly turned off In-RP's custom chat mechanics.
+* **Reproduction Guide:**
+  1. Open `<world>/serverconfig/inrp-server.toml` and set `localChatEnabled = false`.
+  2. Join the world/server as a regular player.
+  3. Verify that standard chat messages are delivered globally via vanilla chat format (without `[L]` tag).
+  4. Execute `/g Test message` or `/global Test message`.
+  5. **Observation Check:** Does the command still execute, broadcasting `[G] <Player>: Test message` across the server and triggering cooldowns, despite the chat feature being disabled?
+* **Proposed Mitigation:**
+  - In `GlobalChatCommand.execute`, check `if (!InRPConfig.LOCAL_CHAT_ENABLED.get())` and send an informative error message (e.g. `source.sendFailure(LocalizationHelper.getMessage("inrp.chat.disabled").withStyle(ChatFormatting.RED)); return 0;`).
+  - Alternatively, consider registering `/global` conditionally or adding a dedicated toggle if global chat is intended to be decoupled from local chat.
+
+---
+
+### 12. 🧪 [Pending Testing] Synchronous `inrp_dead_players.json` Write on the Server Thread
+* **Affected Areas:** [InRPLivesManager.java](file:///c:/Users/Rian/Documents/GitHub/in-rp-1.21.1/src/main/java/com/tio/inrp/data/InRPLivesManager.java) (`save`, `markDead`, `unmarkDead`, `unmarkDeadAll`), [LivesEventHandler.java](file:///c:/Users/Rian/Documents/GitHub/in-rp-1.21.1/src/main/java/com/tio/inrp/events/LivesEventHandler.java) (`onLivingDeath`, `markEliminated`, `clearElimination`), [RPAdminCommand.java](file:///c:/Users/Rian/Documents/GitHub/in-rp-1.21.1/src/main/java/com/tio/inrp/commands/RPAdminCommand.java)
+* **Severity:** Low (Performance Trade-off)
+* **Description:**
+  - `InRPLivesManager.save()` writes `<world>/inrp_dead_players.json` (temporary file + `Files.move`) synchronously, inside `synchronized(LOCK)`, from callers that run on the server thread: the death event, `/rpadmin lives` commands and the login handler.
+  - It only writes when the eliminated-player set actually changes, and `unmarkDeadAll` performs a single write per batch, so the cost is one small file write per elimination or revival.
+  - The file holds one UUID string per eliminated player; the write size grows with that list.
+* **Trade-off:** Keeping the write synchronous guarantees the ledger is on disk before the elimination or revival is acknowledged, which is what the offline-revival reconciliation relies on. Moving it off-thread would require ordering guarantees between writes and the `LOCK`.
+* **Verification Guide:**
+  1. On a test server with a large `inrp_dead_players.json` (e.g. thousands of UUIDs), eliminate or revive a player.
+  2. Observe the tick time (`/tick query` or a profiler) during the write.
+* **Proposed Mitigation:**
+  - None unless the measurement shows a visible tick spike; in that case, queue writes to a single background writer that snapshots the set under `LOCK`.
+* **Suggested Status:** `[False Positive]` (The synchronous write is kept by design, and the cost is acceptable for the vast majority of servers: it only writes when the eliminated-player set actually changes, and `unmarkDeadAll` performs a single write per batch, so the cost is one small file write per elimination or revival, which is negligible for most use cases. Moving it off-thread would require additional synchronization logic to ensure the ledger is persisted before the elimination or revival is acknowledged, which adds unnecessary complexity.)
+
+---
+
 ## 📜 Session Test Logs
 
 ### Test Log: 2026-09-10
@@ -143,6 +237,13 @@ The purpose of this file is to document suspected issues thoroughly with **step-
 - **Participants:** Host & Players
 - **Result:** Confirmed & Resolved in v1.0.7
 - **Observations:** Shovels, hoes, axes, bone meal, and flint & steel were verified and are properly blocked. Consumable items (potions) and opening containers (chests) work normally. Pouring water or lava from buckets is now intercepted via `RightClickBlock` and `RightClickItem`, successfully preventing fluid placement while keeping container interactions open.
+- **Next Steps:** Closed as `[Resolved]`.
+
+### Test Log: 2026-10-17
+- **Tested Issue:** #8 Singleplayer / LAN Host Disconnection on AFK Idle Kick
+- **Participants:** Singleplayer / LAN Host & Players
+- **Result:** Confirmed & Resolved
+- **Observations:** With `afkTimeoutSeconds = 10` and `afkKickSeconds = 15`, host entering AFK state at 10s is not disconnected at 15s. Integrated server remains running cleanly without abrupt shutdown. Moving or sending chat wakes up host normally. Non-host player on LAN is kicked at 15s with `inrp.afk.kick_message`.
 - **Next Steps:** Closed as `[Resolved]`.
 
 ---

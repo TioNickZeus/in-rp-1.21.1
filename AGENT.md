@@ -1,4 +1,4 @@
-﻿# AGENT.md — AI Agent & Developer Operating Manual
+# AGENT.md — AI Agent & Developer Operating Manual
 
 > **Scope**: Operating standards, Git Flow conventions, and development invariants for AI coding agents and contributors working on **In-RP** (`in-rp-1.21.1`).
 > **Repository**: [TioNickZeus/in-rp-1.21.1](https://github.com/TioNickZeus/in-rp-1.21.1)
@@ -22,7 +22,7 @@ Every AI agent operating in this repository **must strictly preserve** these cor
 3. **Defensive Programming & Zero Server Crash Policy**:
    - The mod must **never crash the server tick thread** under any circumstance.
    - Bound and sanitize all inputs: Brigadier commands must enforce strict bounds (`IntegerArgumentType.integer(-1, 100000)`), and config specs must use typed limits (`defineInRange` or `defineInList`).
-   - Always check `InRPConfig.SPEC.isLoaded()` before reading config values to avoid `IllegalStateException` during server bootstrapping or shutdown (`ModConfigEvent.Unloading`).
+   - Config reads that can run during mod construction, config lifecycle events or shutdown (`ModConfigEvent.Unloading`) must check `InRPConfig.SPEC.isLoaded()` first, as `LocalizationHelper.resolveConfiguredLanguage` does, to avoid `IllegalStateException`.
    - Catch and log I/O failures gracefully in `InRPLivesManager`.
 4. **UUID-First Identification & Dual-Store Lives Reconciliation**:
    - Player identity must **always** be resolved and persisted by `UUID`, never solely by player name.
@@ -86,6 +86,7 @@ Before creating a Pull Request, the agent must verify:
 
 - [ ] **Compilation**: `./gradlew compileJava --no-daemon` passes with 0 errors.
 - [ ] **Full Build & Artifact**: `./gradlew build --stacktrace` passes.
+- [ ] **Tests**: `./gradlew test` passes.
 - [ ] **Server-Side Safety**: No client imports or dependencies added (`Dist.CLIENT`, renderers, client screens).
 - [ ] **Translations**: Any new message key exists in both `en_us.json` and `pt_br.json`.
 - [ ] **No Stale References**: Config names and permissions match `InRPConfig.java` and `ARCHITECTURE.md`.
@@ -172,13 +173,15 @@ When handling potential game exploits, combat balance issues, or complex moderat
 
 | File | Purpose | Rule for Agents |
 |:---|:---|:---|
+| [`README.md`](README.md) | Public overview: features, commands, config reference, installation | Update when public behavior, commands or config keys change. |
+| [`code_review.md`](code_review.md) | Review checklist derived from `ARCHITECTURE.md` and this file | Use for every diff review; keep invariant names in sync with §1. |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Single Source of Truth (SSOT) for technical architecture | **Read first** before writing code. Update when packages/data change. |
 | [`ROADMAP.md`](ROADMAP.md) | Backlog and planned feature board | Check before suggesting "new" features. Mark done items. |
 | [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) | Triage board for edge cases and exploits | Log reproduction guides for unconfirmed bugs here. |
 | [`CHANGELOG.md`](CHANGELOG.md) | Version history and release notes | Document every user-facing or architectural change. |
 | [`gradle.properties`](gradle.properties) | Mod metadata and version | Update `mod_version` upon release preparation. |
 | [`InRP.java`](src/main/java/com/tio/inrp/InRP.java) | Mod entrypoint (`@Mod`) | Keep lightweight; delegate logic to handlers and commands. |
-| [`InRPConfig.java`](src/main/java/com/tio/inrp/config/InRPConfig.java) | Server configuration specifications | Check `.isLoaded()`; prefer sanitizing accessors. |
+| [`InRPConfig.java`](src/main/java/com/tio/inrp/config/InRPConfig.java) | Server configuration specifications | Check `.isLoaded()` on lifecycle and shutdown reads; prefer sanitizing accessors. |
 | [`InRPAttachments.java`](src/main/java/com/tio/inrp/data/InRPAttachments.java) | NeoForge player data attachments | Ensure `copyOnDeath()`; null-safe accessors. |
 | [`InRPLivesManager.java`](src/main/java/com/tio/inrp/data/InRPLivesManager.java) | External JSON persistence for dead players | Thread-safe (`synchronized(LOCK)`) with `.tmp` atomic writes. |
 | [`ScoreboardHandler.java`](src/main/java/com/tio/inrp/events/ScoreboardHandler.java) | Native scoreboard team & tab list renderer | Preserves `PREVIOUS_TEAM`; never send manual update packets. |
