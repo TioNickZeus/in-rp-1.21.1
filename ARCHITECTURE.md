@@ -2,7 +2,7 @@
 
 > **Single Source of Truth (SSOT)** for the mod's technical architecture and design decisions.  
 > Every AI agent, contributor, or maintainer must read this document before modifying code.  
-> **Last updated**: September 2026 — version 1.0.8
+> **Last updated**: October 2026 — version 1.0.8
 
 ---
 
@@ -48,7 +48,7 @@ Achieving rich immersion on pure vanilla clients requires specific technical app
 com.tio.inrp/
 ├── InRP.java                    ← Mod entrypoint (@Mod), lifecycle bootstrapping & bus registration
 ├── commands/                    ← Brigadier commands (server-side)
-│   ├── RPCommand.java           ← /rp [on|off|help] (toggle RP mode, audio feedback)
+│   ├── RPCommand.java           ← /rp [on|off|toggle|help] (status, toggle RP mode, audio feedback)
 │   ├── AFKCommand.java          ← /afk (voluntary idle toggle, broadcast, 3s anti-spam)
 │   ├── RollCommand.java         ← /roll [NdS|N] (dice rolling with proximity broadcast)
 │   ├── LivesCommand.java        ← /lives [player] (query remaining lives & status)
@@ -75,6 +75,9 @@ com.tio.inrp/
 src/main/resources/assets/inrp/lang/
 ├── en_us.json                   ← English translations (mandatory fallback)
 └── pt_br.json                   ← Brazilian Portuguese translations
+
+src/main/templates/META-INF/neoforge.mods.toml  ← Mod metadata template
+src/test/java/com/tio/inrp/config/InRPConfigTest.java ← JUnit 5 tests for InRPConfig.SPEC
 ```
 
 ### Side Distribution Rules
@@ -112,11 +115,12 @@ src/main/resources/assets/inrp/lang/
 - **Monotonic Clocks**:
   - Inactivity and timeouts strictly use `net.minecraft.Util.getMillis()`. This aligns directly with vanilla's `lastActionTime` and prevents clock corrections from resetting or triggering idle states unexpectedly.
 - **Wake-Up Vectors**:
-  - Wake-up is triggered by: physical movement exceeding 0.15 blocks (`distSq > 0.0225`) after a 1-second grace window, player chat, entity attacks, block interactions, or running `/afk` / `/g`.
+  - Wake-up is triggered by: physical movement exceeding 0.15 blocks (`distSq > 0.0225`) or camera rotation greater than 2° after a 1-second grace window, player chat, entity attacks, right-clicking a block, or running `/afk` / `/g`.
   - When waking up, `player.resetLastActionTime()` is called immediately to prevent the next sweep from re-flagging the player.
 - **Idle Kick Clamping**:
-  - If `afkKickSeconds` is configured (> 0), players idle longer than `afkKickMillis()` are disconnected.
+  - If `afkKickSeconds` is configured (> 0), players who are already marked AFK and whose idle time reaches `afkKickMillis()` are disconnected.
   - The kick threshold is strictly clamped to never execute below `afkTimeoutMillis()`.
+  - The idle kick skips the singleplayer/LAN host (`player.server.isSingleplayerOwner`) to avoid aborting the integrated server session or corrupting `session.lock` (closes KNOWN_ISSUES.md #8).
 
 ### 3.3 Lives, Elimination & Revival Engine (`LivesEventHandler`, `InRPLivesManager`)
 
@@ -132,22 +136,23 @@ src/main/resources/assets/inrp/lang/
 - **Dual-Store Persistence & Offline Revival**:
   - While active state resides in `InRPAttachments`, an independent JSON ledger (`<world>/inrp_dead_players.json`) is maintained by `InRPLivesManager`.
   - When an admin executes `/rpadmin lives revive <player>` on an offline player, their UUID is removed from the JSON ledger.
-  - Upon next login, `LivesEventHandler.onPlayerLoggedIn` detects the mismatch (JSON says alive, attachment says dead) and restores the player to survival mode automatically.
+  - Upon next login, `LivesEventHandler.onPlayerLogin` detects the mismatch (JSON says alive, attachment says dead) and restores the player to survival mode automatically.
 
 ### 3.4 Proximity Local Chat, Global Chat & Chat Spy (`ChatEventHandler`, `GlobalChatCommand`, `ChatSpyCommand`)
 
 - **Proximity Chat Routing**:
   - Standard chat (`ServerChatEvent`) is intercepted when `localChatEnabled = true`.
   - Eligible recipients are filtered using `distanceToSqr` (`localChatRadiusSq()`) within the sender's current `ServerLevel`.
-  - Message format: `[L] <PlayerName> message` (via `ChatFormat.formatLocal()`).
-  - If no other player is in proximity, the sender receives subtle feedback: `inrp.chat.local_no_one_heard`.
+  - Message format: `[L] <PlayerName>: message` (via `ChatFormat.channelMessage()`).
+  - If no other player is in proximity, the sender receives subtle feedback: `inrp.chat.local.no_one_heard`. Every player in the same level within the radius counts as a recipient, including spectators: see KNOWN_ISSUES.md — Chat & Roll "Sonar Radar": Detection of Spectators / Vanished Staff (#1).
 - **Bypassing Chat Signature Issues**:
   - Messages are broadcast to recipients as unsigned system messages (`recipient.sendSystemMessage()`). This avoids signature verification crashes on vanilla clients caused by altered recipient audiences.
 - **Global Chat (`/g`, `/global`)**:
-  - Server-wide broadcast prefixed with `[G]`.
+  - Server-wide broadcast prefixed with `[G]`, delivered as an unsigned system message through `PlayerList.broadcastSystemMessage`.
   - Enforces a per-player cooldown (`globalChatCooldownSeconds`) tracked in a `ConcurrentHashMap` with monotonic timestamps.
+  - `/g` does not check `localChatEnabled`: see KNOWN_ISSUES.md — Global Chat (`/g`, `/global`) Remains Functional When Chat Feature is Disabled (#11).
 - **Staff Chat Spy**:
-  - Staff (OP level 2+) can toggle `/chatspy`.
+  - Staff (OP level 2+) can toggle `/chatspy` (or `/rpadmin spy`). The toggle is stored in the player's save data and the operator level is re-checked at delivery time (`ChatFormat.isActiveChatSpy`).
   - When active, staff members receive:
     - Out-of-range local chat marked with `[SPY:L]`.
     - Vanilla private messages (`/tell`, `/msg`, `/w`) marked with `[SPY:PM]` (controlled by `spyPrivateMessages`).
@@ -170,19 +175,20 @@ src/main/resources/assets/inrp/lang/
 - **World Interaction Restrictions**:
   - Block breaking is intercepted in `BlockEvent.BreakEvent`.
   - Block placing is intercepted in `BlockEvent.EntityPlaceEvent`.
-  - **Fluid Placement Bypass Mitigation**: Emptying fluid buckets (water/lava) into the world is intercepted in `PlayerInteractEvent.RightClickBlock` (denying item use while preserving container access) and `PlayerInteractEvent.RightClickItem` (cancelling placement when targeted at air/fluids).
+  - **Fluid Placement Bypass Mitigation**: Emptying fluid buckets (water/lava) into the world is intercepted in `PlayerInteractEvent.RightClickBlock` (denying item use while preserving container access) and `PlayerInteractEvent.RightClickItem` (cancelling use of fluid-placing items).
 - **Staff Exemption**:
   - Operators (OP level 2+) bypass all restrictions when `opBypassRestrictions = true`.
 
 ### 3.7 Administrative Staging & Confirmation Engine (`RPAdminCommand`, `ConfirmationManager`)
 
 - **Threshold Protection**:
-  - Administrative actions affecting 5 or more players (`CONFIRMATION_THRESHOLD = 5`) are intercepted and staged.
+  - Administrative actions affecting 5 or more players (`CONFIRMATION_THRESHOLD = 5`, in `RPAdminCommand`) are intercepted and staged.
+  - Staged commands: `set`, `lives set`, `lives setdeaths`, `lives applydefault`. `lives revive` does not go through staging: see KNOWN_ISSUES.md — `/rpadmin lives revive` Bypasses Bulk Confirmation Staging (#9).
 - **Staging Lifecycle**:
-  - The action is wrapped into a pending execution record inside `ConfirmationManager` with a 10-second TTL measured with `Util.getMillis()`.
+  - The action is wrapped into a pending execution record inside `ConfirmationManager` with a 10-second TTL (`EXPIRY_SECONDS`) measured with `Util.getMillis()`. Each administrator has one pending action; a new request replaces it.
   - The administrator is prompted with an interactive, clickable `[CONFIRM]` component linking to `/rpadmin confirm`.
   - Targets are stored as **UUIDs** and re-resolved dynamically upon execution, preventing stale references or silent data loss if players disconnect during the confirmation window.
-  - Console executions bypass confirmation and execute immediately.
+  - Sources that are not players (console, command blocks) have no UUID and execute immediately without confirmation.
 
 ---
 
@@ -192,7 +198,9 @@ All configuration lives in `<world>/serverconfig/inrp-server.toml` under `ModCon
 
 ### Sanitizing Accessors (`InRPConfig`)
 
-Raw `ConfigValue` objects should be accessed via safe wrapper methods in `InRPConfig`:
+Raw `ConfigValue` objects should be accessed via safe wrapper methods in `InRPConfig`.
+
+Reads that can happen outside a running server (config lifecycle events, static initialisation) must check `InRPConfig.SPEC.isLoaded()` first: `LocalizationHelper.resolveConfiguredLanguage` does, and `InRP.onConfigLoad` skips `ModConfigEvent.Unloading`. This follows the `IllegalStateException` fixed in 1.0.7 (see CHANGELOG.md).
 
 | Accessor | Behavior & Sanitization |
 |:---|:---|
@@ -201,13 +209,13 @@ Raw `ConfigValue` objects should be accessed via safe wrapper methods in `InRPCo
 | `afkKickMillis()` | Converts `afkKickSeconds` to milliseconds; clamped to never fall below `afkTimeoutMillis()`. Returns `-1` if disabled. |
 | `localChatRadiusSq()` | Pre-squares `localChatRadius` for high-performance `distanceToSqr` comparisons. |
 | `eliminatesByKick()` | Returns `true` if `livesAction` equals `"kick"`. |
-| `logSuspiciousValues()` | Emits warnings during server startup for contradictory configuration settings. |
+| `logSuspiciousValues()` | Called on `ServerStartingEvent`. Warns when `afkKickSeconds` is below `afkTimeoutSeconds` or a suffix exceeds 64 characters; logs an info line when the suffix is disabled. |
 
 ### Configuration Specification
 
 | Section | Key | Type | Default | Domain / Constraints |
 |:---|:---|:---|:---|:---|
-| `general` | `serverLanguage` | String | `"en_us"` | Validated against regex `[a-z0-9_-]{2,32}`; falls back to `en_us`. |
+| `general` | `serverLanguage` | String | `"en_us"` | Not constrained by the spec. `LocalizationHelper` validates it at read time (stripped, lower-cased) against `[a-z0-9_-]{2,32}`; falls back to `en_us`. |
 | `general` | `nametagSuffix` | String | `" [in RP]"` | Stripped, capped at 64 chars; `""` disables nametag marker. |
 | `general` | `chatSuffix` | String | `"[RP]"` | Fallback marker if `nametagSuffix` is empty. |
 | `rules` | `pvpAllowedInRP` | bool | `true` | When `false`, blocks melee and indirect damage between/against RP players. |
@@ -215,13 +223,13 @@ Raw `ConfigValue` objects should be accessed via safe wrapper methods in `InRPCo
 | `rules` | `blockPlaceAllowedInRP` | bool | `true` | When `false`, prevents RP players from placing blocks or emptying fluid buckets. |
 | `rules` | `opBypassRestrictions` | bool | `true` | When `true`, OP level 2+ staff bypass all RP rules. |
 | `roll` | `rollDefaultSides` | int | `20` | Range: `[2, 10000]` |
-| `roll` | `rollProximityRadius` | double | `30.0` | Range: `[-1.0, 1000.0]` (`-1.0` = global broadcast) |
+| `roll` | `rollProximityRadius` | double | `30.0` | Range: `[-1.0, 1000.0]` (`-1.0` = global broadcast; any value `<= 0` is also treated as global) |
 | `lives` | `livesAction` | String | `"spectator"` | Must be one of: `"spectator"`, `"kick"`. |
 | `lives` | `defaultMaxLives` | int | `-1` | Range: `[-1, 100000]` (`-1` = unlimited). |
 | `lives` | `countDeathsOnlyInRP` | bool | `false` | When `true`, deaths outside RP mode do not consume lives. |
 | `afk` | `afkEnabled` | bool | `true` | Enables or disables the idle detection system. |
 | `afk` | `afkTimeoutSeconds` | int | `300` | Range: `[10, 86400]` (5 minutes default). |
-| `afk` | `afkKickSeconds` | int | `-1` | Range: `[-1, 86400]` (`-1` = disabled). |
+| `afk` | `afkKickSeconds` | int | `-1` | Range: `[-1, 86400]` (`-1` or `0` = disabled). |
 | `afk` | `autoDisableRPOnAFK` | bool | `true` | When `true`, entering AFK automatically exits RP mode. |
 | `chat` | `localChatEnabled` | bool | `true` | Converts normal chat into proximity local chat. |
 | `chat` | `localChatRadius` | double | `40.0` | Range: `[5.0, 500.0]` blocks. |
@@ -233,21 +241,25 @@ Raw `ConfigValue` objects should be accessed via safe wrapper methods in `InRPCo
 
 ## 5. Invariants and Golden Rules
 
-1. **Server Thread Stability**: No exception from any module is allowed to bubble up and crash the server tick thread.
-2. **100% Server-Side Execution**: Never introduce client-side classes, renderers, keybindings, or custom network packets. Unmodified vanilla clients must always be able to join.
-3. **Singleplayer & LAN Host Immunity**: Never kick the integrated server host when `livesAction = "kick"`. Always switch them to spectator mode to prevent `session.lock` world locking.
-4. **Monotonic Timings**: All cooldowns, confirmation TTLs, and idle calculations must strictly use `Util.getMillis()`.
-5. **Atomic File Writes**: Disk persistence (`inrp_dead_players.json`) must use `.tmp` temporary file swaps via `Files.move(..., REPLACE_EXISTING)` and explicit `UTF-8` encoding under `synchronized(LOCK)`.
-6. **Complete Internationalization**: Every player-facing message must use `LocalizationHelper` and be defined in both `en_us.json` and `pt_br.json`.
-7. **Scoreboard Team Isolation**: Foreign scoreboard teams must be preserved in `PREVIOUS_TEAM` and restored when players leave In-RP teams.
-8. **No State Leak Across Worlds**: Reset all static registries and cooldown maps on `ServerStoppedEvent`.
-9. **Surgical Additive Design**: Never rewrite functional code. Treat existing logic as load-bearing and introduce features additively with backwards-compatible defaults.
+Numbering and names follow [`AGENT.md` §1](AGENT.md#1-core-mission--architectural-invariants).
+
+1. **100% Server-Side Execution & Pure Vanilla Client Compatibility**: Never introduce client-side classes, renderers, keybindings, or custom network packets. Unmodified vanilla clients must always be able to join.
+2. **Singleplayer & LAN Host Immunity from Disconnects**: Never kick the integrated server host when `livesAction = "kick"`. Always switch them to spectator mode to prevent `session.lock` world locking.
+3. **Defensive Programming & Zero Server Crash Policy**: No exception from any module is allowed to bubble up and crash the server tick thread. Config reads outside a running server follow the `isLoaded()` rule in §4.
+4. **UUID-First Identification & Dual-Store Lives Reconciliation**: Player identity is resolved and persisted by `UUID` (`inrp_dead_players.json`, staged confirmation targets). On login, `LivesEventHandler.onPlayerLogin` reconciles the JSON ledger with the `IS_DEAD` attachment (see §3.3).
+5. **Monotonic Timing (`Util.getMillis()`)**: All cooldowns, confirmation TTLs, and idle calculations must strictly use `Util.getMillis()`.
+6. **Data Integrity & Atomic Persistence**: Disk persistence (`inrp_dead_players.json`) must use `.tmp` temporary file swaps via `Files.move(..., REPLACE_EXISTING)` and explicit `UTF-8` encoding under `synchronized(LOCK)`.
+7. **Scoreboard Team Isolation & Foreign Team Preservation**: Foreign scoreboard teams must be preserved in `PREVIOUS_TEAM` and restored when players leave In-RP teams.
+8. **No State Leak Across Worlds**: Reset all static registries and cooldown maps on `ServerStoppedEvent`. `InRP.onServerStopped` resets `InRPLivesManager`, `AFKEventHandler`, `AFKCommand`, `GlobalChatCommand` and `ConfirmationManager`; per-player entries are also dropped on logout.
+9. **Zero Hardcoded Player-Facing Text**: Every player-facing message must use `LocalizationHelper` and be defined in both `en_us.json` and `pt_br.json`.
+10. **Additive & Backward-Compatible Design**: Never rewrite functional code ([`AGENT.md` §4](AGENT.md#4-surgical-editing--anti-rewrite-policy)). Treat existing logic as load-bearing and introduce features additively with backwards-compatible defaults.
 
 ---
 
 ## 6. Testing Strategy
 
 - **Build Verification**: Every modification must compile cleanly via `./gradlew compileJava --no-daemon` and build via `./gradlew build --stacktrace`.
+- **Automated Tests**: `./gradlew test` runs JUnit 5 (`useJUnitPlatform()`); `build` also runs it. The only test class is `InRPConfigTest` (`src/test/java/com/tio/inrp/config/`), with two tests: `testSpecCorrectWithEmptyConfig` (`InRPConfig.SPEC.correct` on an empty config does not throw and yields `livesAction = "spectator"`) and `testLivesActionValidation` (`livesAction` accepts `spectator`/`kick` and reverts invalid values). Nothing else (handlers, commands, persistence) has automated coverage.
 - **Singleplayer / Integrated Server Testing**: Verify that dying with `livesAction = "kick"` places the host in spectator mode without disconnecting or locking the world.
 - **Vanilla Client Testing**: Validate that unmodified vanilla clients can connect, receive scoreboard team suffixes, see actionbar notices, and communicate in proximity/global chat without signature errors.
 - **Exploit & Edge Case Triage**: Follow the guidelines in [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) for verifying combat bypasses, fluid placement exploits, and boundary cases.

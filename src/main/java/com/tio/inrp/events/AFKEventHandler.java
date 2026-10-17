@@ -167,6 +167,10 @@ public final class AFKEventHandler {
             }
 
             if (kickMillis > 0 && idleMillis >= kickMillis) {
+                // Kicking the integrated-server host aborts the whole session and can leave session.lock behind.
+                if (player.server.isSingleplayerOwner(player.getGameProfile())) {
+                    continue;
+                }
                 player.connection.disconnect(LocalizationHelper.getMessage("inrp.afk.kick_message")
                         .withStyle(ChatFormatting.RED, ChatFormatting.BOLD));
             }
